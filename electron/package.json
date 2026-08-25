@@ -1,0 +1,46 @@
+{
+    "name": "a3-os-dashboard-desktop",
+    "version": "1.0.0",
+    "private": true,
+    "description": "A3-OS Dashboard - painel do transcritor em app desktop",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build:dashboard": "cd ../dashboard && npm run build && cd ../electron && node copy-static.js",
+        "dist": "npm run build:dashboard && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder"
+    },
+    "devDependencies": {
+        "electron": "^33.2.0",
+        "electron-builder": "^25.1.8"
+    },
+    "build": {
+        "appId": "com.a3os.dashboard",
+        "productName": "A3-OS Dashboard",
+        "asar": true,
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "preload.js"
+        ],
+        "extraResources": [
+            {
+                "from": "../dashboard/.next/standalone",
+                "to": "app"
+            }
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "build/icon.png"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "A3-OS Dashboard"
+        }
+    }
+}

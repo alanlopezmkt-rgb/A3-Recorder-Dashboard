@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase, ADMIN_EMAIL } from "../lib/supabaseClient";
 
 export default function Home() {
@@ -59,7 +59,7 @@ function Login({ isWrongUser }) {
     return (
         <div className="login-wrap">
             <form className="card login-card" onSubmit={entrar}>
-                <div className="login-badge">A3</div>
+                <img className="login-badge" src="/icon-a3.png" alt="A3-OS" />
                 <h1>A3-OS Painel</h1>
                 <div className="subtitle">
                     {isWrongUser
@@ -102,6 +102,7 @@ const STATUS_LABEL = {
 };
 
 const WORKER_OFFLINE_AFTER_SECONDS = 40;
+const USER_OFFLINE_AFTER_SECONDS = 90;
 
 function IconGrid() {
     return (
@@ -150,6 +151,156 @@ function IconChevron({ collapsed }) {
     );
 }
 
+function IconSearch() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+        </svg>
+    );
+}
+
+function IconRefresh() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 4v6h-6" />
+        </svg>
+    );
+}
+
+function IconEye() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
+    );
+}
+
+function IconAudio() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="17" height="17">
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+        </svg>
+    );
+}
+
+function IconFolder() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h4.3c.5 0 1 .2 1.3.6l1 1.1h6.8c.9 0 1.6.7 1.6 1.6v9.3c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6V6.2z" />
+        </svg>
+    );
+}
+
+function IconUsers() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+    );
+}
+
+function IconCheckCircle() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <path d="M22 4L12 14.01l-3-3" />
+        </svg>
+    );
+}
+
+function IconClock() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <circle cx="12" cy="12" r="9.5" />
+            <path d="M12 7v5l3.2 2" />
+        </svg>
+    );
+}
+
+function IconGraduation() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <path d="M22 10L12 5 2 10l10 5 10-5z" />
+            <path d="M6 12.5V17c0 1.5 3 3 6 3s6-1.5 6-3v-4.5" />
+        </svg>
+    );
+}
+
+function IconDatabase() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <ellipse cx="12" cy="5" rx="8" ry="3" />
+            <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+            <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+        </svg>
+    );
+}
+
+function IconServer() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <rect x="2" y="3" width="20" height="7" rx="1.6" />
+            <rect x="2" y="14" width="20" height="7" rx="1.6" />
+            <path d="M6 6.5h.01M6 17.5h.01" />
+        </svg>
+    );
+}
+
+function IconPuzzle() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <path d="M4 7h3.5a1.5 1.5 0 1 1 0 3H4v3.5a1.5 1.5 0 1 0 3 0V13h3.5a1.5 1.5 0 1 1 0 3H7v3.5a1.5 1.5 0 1 0 3 0V19h3.5a1.5 1.5 0 1 1 0-3H13v-3.5a1.5 1.5 0 1 0-3 0V13H6.5" />
+        </svg>
+    );
+}
+
+function IconTrendingUp() {
+    return (
+        <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 7l-8.5 8.5-5-5L2 17" />
+            <path d="M16 7h6v6" />
+        </svg>
+    );
+}
+
+function IconBell() {
+    return (
+        <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+    );
+}
+
+function IconDownload() {
+    return (
+        <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12" />
+            <path d="M7 10l5 5 5-5" />
+            <path d="M4 19h16" />
+        </svg>
+    );
+}
+
+function IconTrash() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <path d="M3 6h18" />
+            <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6" />
+            <path d="M19 6l-.9 13.2A2 2 0 0 1 16.1 21H7.9a2 2 0 0 1-2-1.8L5 6" />
+            <path d="M10 11v6M14 11v6" />
+        </svg>
+    );
+}
+
 function Dashboard() {
     const [rows, setRows] = useState([]);
     const [autoTranscribe, setAutoTranscribe] = useState(true);
@@ -158,9 +309,18 @@ function Dashboard() {
     const [worker, setWorker] = useState(null);
     const [now, setNow] = useState(Date.now());
     const [theme, setTheme] = useState("dark");
-    const [settingsOpen, setSettingsOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [statusFilter, setStatusFilter] = useState("all");
+    const [view, setView] = useState("files");
+    const [usuarios, setUsuarios] = useState([]);
+    const [progresso, setProgresso] = useState({
+        totalLessons: 0,
+        completedLessons: 0,
+        totalModules: 0,
+        completedModules: 0
+    });
+    const [modulosProgresso, setModulosProgresso] = useState([]);
+    const [searchText, setSearchText] = useState("");
     const [deletePasswordHash, setDeletePasswordHash] = useState(null);
     const [newPasswordInput, setNewPasswordInput] = useState("");
     const [savingPassword, setSavingPassword] = useState(false);
@@ -169,6 +329,18 @@ function Dashboard() {
     const [deletePasswordInput, setDeletePasswordInput] = useState("");
     const [deleteError, setDeleteError] = useState("");
     const [deleting, setDeleting] = useState(false);
+    const [notifPrefs, setNotifPrefs] = useState({
+        amigosOnline: true,
+        audioPendente: true,
+        transcricaoSucesso: true,
+        transcricaoFalha: true
+    });
+
+    const prevOnlineIdsRef = useRef(null);
+    const prevAudioIdsRef = useRef(null);
+    const prevJobStatusRef = useRef(null);
+    const notifPrefsRef = useRef(notifPrefs);
+    notifPrefsRef.current = notifPrefs;
 
     async function carregar() {
         const { data: settings } = await supabase
@@ -190,6 +362,46 @@ function Dashboard() {
             .maybeSingle();
 
         setWorker(workerStatus || null);
+
+        const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, display_name, last_seen")
+            .order("display_name", { ascending: true });
+
+        setUsuarios(profiles || []);
+
+        const { data: cursos } = await supabase
+            .from("courses")
+            .select("total_modules, total_lessons, modules ( total_lessons, lessons ( status ) )");
+
+        let totalLessons = 0;
+        let completedLessons = 0;
+        let totalModules = 0;
+        let completedModules = 0;
+
+        (cursos || []).forEach((curso) => {
+            totalLessons += curso.total_lessons || 0;
+            totalModules += curso.total_modules || 0;
+
+            (curso.modules || []).forEach((modulo) => {
+                const aulas = modulo.lessons || [];
+                const concluidas = aulas.filter((l) => l.status === "completed").length;
+                completedLessons += concluidas;
+
+                if (modulo.total_lessons && concluidas >= modulo.total_lessons) {
+                    completedModules += 1;
+                }
+            });
+        });
+
+        setProgresso({ totalLessons, completedLessons, totalModules, completedModules });
+
+        const { data: modulosData } = await supabase
+            .from("modules")
+            .select("id, module_number, name, total_lessons, courses ( name ), lessons ( status )")
+            .order("module_number", { ascending: true });
+
+        setModulosProgresso(modulosData || []);
 
         const { data: audios, error } = await supabase
             .from("audio_files")
@@ -242,6 +454,26 @@ function Dashboard() {
                 { event: "*", schema: "public", table: "worker_status" },
                 carregar
             )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "profiles" },
+                carregar
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "courses" },
+                carregar
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "modules" },
+                carregar
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "lessons" },
+                carregar
+            )
             .subscribe();
 
         return () => {
@@ -255,6 +487,58 @@ function Dashboard() {
     }, []);
 
     useEffect(() => {
+        const agora = Date.now();
+        const onlineIds = new Set(
+            usuarios
+                .filter((u) => u.last_seen && (agora - new Date(u.last_seen).getTime()) / 1000 < USER_OFFLINE_AFTER_SECONDS)
+                .map((u) => u.id)
+        );
+
+        if (prevOnlineIdsRef.current && notifPrefsRef.current.amigosOnline) {
+            usuarios.forEach((u) => {
+                if (onlineIds.has(u.id) && !prevOnlineIdsRef.current.has(u.id)) {
+                    notificar("Amigo online", `${u.display_name || "Um usuário"} está online agora.`);
+                }
+            });
+        }
+
+        prevOnlineIdsRef.current = onlineIds;
+    }, [usuarios]);
+
+    useEffect(() => {
+        const pendingIds = new Set(rows.filter((r) => r.status !== "completed").map((r) => r.id));
+        const jobStatusById = {};
+        rows.forEach((r) => {
+            jobStatusById[r.id] = r.status;
+        });
+
+        if (prevAudioIdsRef.current && notifPrefsRef.current.audioPendente) {
+            rows.forEach((r) => {
+                if (pendingIds.has(r.id) && !prevAudioIdsRef.current.has(r.id)) {
+                    notificar("Novo áudio pendente", `${r.filename || "Um áudio"} está aguardando transcrição.`);
+                }
+            });
+        }
+
+        if (prevJobStatusRef.current) {
+            rows.forEach((r) => {
+                const anterior = prevJobStatusRef.current[r.id];
+                if (!anterior || anterior === r.status) {
+                    return;
+                }
+                if (r.status === "completed" && notifPrefsRef.current.transcricaoSucesso) {
+                    notificar("Transcrição concluída", `${r.filename || "Um áudio"} foi transcrito com sucesso.`);
+                } else if (r.status === "failed" && notifPrefsRef.current.transcricaoFalha) {
+                    notificar("Falha na transcrição", `${r.filename || "Um áudio"} falhou ao transcrever.`);
+                }
+            });
+        }
+
+        prevAudioIdsRef.current = pendingIds;
+        prevJobStatusRef.current = jobStatusById;
+    }, [rows]);
+
+    useEffect(() => {
         const salvo = localStorage.getItem("dashboard-theme");
         const inicial = salvo === "light" ? "light" : "dark";
         setTheme(inicial);
@@ -265,6 +549,36 @@ function Dashboard() {
         setTheme(novo);
         document.documentElement.setAttribute("data-theme", novo);
         localStorage.setItem("dashboard-theme", novo);
+    }
+
+    useEffect(() => {
+        const salvo = localStorage.getItem("dashboard-notif-prefs");
+        if (salvo) {
+            try {
+                setNotifPrefs((prev) => ({ ...prev, ...JSON.parse(salvo) }));
+            } catch {
+                // ignora preferências salvas em formato inválido
+            }
+        }
+
+        if (typeof Notification !== "undefined" && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+    }, []);
+
+    function alternarNotifPref(chave) {
+        setNotifPrefs((prev) => {
+            const novo = { ...prev, [chave]: !prev[chave] };
+            localStorage.setItem("dashboard-notif-prefs", JSON.stringify(novo));
+            return novo;
+        });
+    }
+
+    function notificar(titulo, corpo) {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+            return;
+        }
+        new Notification(titulo, { body: corpo, icon: "/icon-a3.png" });
     }
 
     useEffect(() => {
@@ -394,9 +708,23 @@ function Dashboard() {
     }
 
     const rowsFiltradas = rows.filter((row) => {
-        if (statusFilter === "all") return true;
-        if (statusFilter === "completed") return row.status === "completed";
-        if (statusFilter === "pending") return row.status !== "completed";
+        if (statusFilter === "completed" && row.status !== "completed") return false;
+        if (statusFilter === "pending" && row.status === "completed") return false;
+
+        if (searchText.trim()) {
+            const alvo = [
+                row.filename,
+                row.courses?.name,
+                row.modules?.name,
+                row.lessons?.title,
+                row.profiles?.display_name
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+            if (!alvo.includes(searchText.trim().toLowerCase())) return false;
+        }
+
         return true;
     });
 
@@ -405,88 +733,165 @@ function Dashboard() {
         worker.last_seen &&
         (now - new Date(worker.last_seen).getTime()) / 1000 < WORKER_OFFLINE_AFTER_SECONDS;
 
+    const pendentesCount = rows.filter((r) => r.status !== "completed").length;
+
+    const cursosAgrupados = Object.values(
+        rows.reduce((acc, row) => {
+            const nome = row.courses?.name || "Sem curso";
+            if (!acc[nome]) acc[nome] = { nome, total: 0 };
+            acc[nome].total += 1;
+            return acc;
+        }, {})
+    ).sort((a, b) => b.total - a.total);
+
+    const chartData = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date(now);
+        d.setDate(d.getDate() - (6 - i));
+        const key = d.toISOString().slice(0, 10);
+        const count = rows.filter((r) => r.created_at && r.created_at.slice(0, 10) === key).length;
+        return { key, count, label: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "") };
+    });
+    const chartMax = Math.max(1, ...chartData.map((d) => d.count));
+
+    const usuariosCount = usuarios.length;
+    const usuariosOnline = usuarios.filter((u) => userIsOnline(u)).length;
+
+    function userIsOnline(usuario) {
+        if (!usuario?.last_seen) return false;
+        return (now - new Date(usuario.last_seen).getTime()) / 1000 < USER_OFFLINE_AFTER_SECONDS;
+    }
+    const concluidasCount = rows.filter((r) => r.status === "completed").length;
+
+    function formatarHoraAgora() {
+        return new Date(now).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
     return (
         <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
             <aside className="sidebar">
                 <div className="sidebar-header">
-                    <div className="brand-badge">A3</div>
+                    <img className="brand-badge" src="/icon-a3.png" alt="A3-OS" />
                     {!sidebarCollapsed && <span className="sidebar-title">A3-OS</span>}
                 </div>
 
                 <nav className="sidebar-nav">
-                    <button className="sidebar-item active" title="Dashboard">
+                    {!sidebarCollapsed && <div className="sidebar-section-label">Operação</div>}
+
+                    <button
+                        className={`sidebar-item ${!["progresso", "notificacoes", "extensao", "configuracoes"].includes(view) ? "active" : ""}`}
+                        title="Dashboard"
+                        onClick={() => { setView("files"); setStatusFilter("all"); }}
+                    >
                         <IconGrid />
                         {!sidebarCollapsed && <span>Dashboard</span>}
+                        {pendentesCount > 0 && (
+                            <span className="sidebar-badge">{pendentesCount}</span>
+                        )}
                     </button>
 
-                    <div className="sidebar-settings-wrap">
-                        <button
-                            className="sidebar-item"
-                            title="Configurações"
-                            onClick={() => setSettingsOpen((v) => !v)}
-                        >
-                            <IconGear />
-                            {!sidebarCollapsed && <span>Configurações</span>}
-                        </button>
+                    <button
+                        className={`sidebar-item ${view === "progresso" ? "active" : ""}`}
+                        title="Progresso"
+                        onClick={() => setView("progresso")}
+                    >
+                        <IconTrendingUp />
+                        {!sidebarCollapsed && <span>Progresso</span>}
+                    </button>
 
-                        {settingsOpen && (
-                            <div className="settings-menu settings-menu-sidebar" onMouseLeave={() => setSettingsOpen(false)}>
-                                <div className="settings-menu-title">Transcrição</div>
-                                <div className="settings-row">
-                                    <span>Automática</span>
-                                    <div
-                                        className="switch"
-                                        data-on={autoTranscribe}
-                                        onClick={alternarAuto}
-                                    >
-                                        <div className="switch-dot" />
-                                    </div>
-                                </div>
+                    <button
+                        className={`sidebar-item ${view === "notificacoes" ? "active" : ""}`}
+                        title="Notificações"
+                        onClick={() => setView("notificacoes")}
+                    >
+                        <IconBell />
+                        {!sidebarCollapsed && <span>Notificações</span>}
+                    </button>
 
-                                <div className="settings-menu-title">Tema</div>
-                                <div className="theme-options">
-                                    <div
-                                        className="theme-option"
-                                        data-active={theme === "dark"}
-                                        onClick={() => alternarTema("dark")}
-                                    >
-                                        Escuro
-                                    </div>
-                                    <div
-                                        className="theme-option"
-                                        data-active={theme === "light"}
-                                        onClick={() => alternarTema("light")}
-                                    >
-                                        Claro
-                                    </div>
-                                </div>
+                    <button
+                        className={`sidebar-item ${view === "extensao" ? "active" : ""}`}
+                        title="Extensão"
+                        onClick={() => setView("extensao")}
+                    >
+                        <IconDownload />
+                        {!sidebarCollapsed && <span>Extensão</span>}
+                    </button>
 
-                                <div className="settings-menu-title">Segurança</div>
-                                <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
-                                    <span>Senha para excluir arquivos</span>
-                                    <input
-                                        type="password"
-                                        placeholder={deletePasswordHash ? "Alterar senha" : "Definir senha"}
-                                        value={newPasswordInput}
-                                        onChange={(e) => setNewPasswordInput(e.target.value)}
-                                        style={{ margin: 0 }}
-                                    />
-                                    <button
-                                        className="btn-small"
-                                        disabled={savingPassword}
-                                        onClick={salvarSenhaExclusao}
-                                    >
-                                        {savingPassword ? "Salvando..." : "Salvar senha"}
-                                    </button>
-                                    {passwordSavedMsg && (
-                                        <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                                            {passwordSavedMsg}
-                                        </div>
-                                    )}
-                                </div>
+                    <button
+                        className={`sidebar-item ${view === "configuracoes" ? "active" : ""}`}
+                        title="Configurações"
+                        onClick={() => setView("configuracoes")}
+                    >
+                        <IconGear />
+                        {!sidebarCollapsed && <span>Configurações</span>}
+                    </button>
+
+                    {!sidebarCollapsed && <div className="sidebar-section-label">Visão geral</div>}
+
+                    <div
+                        className="sidebar-stat sidebar-stat-files sidebar-stat-clickable"
+                        data-active={view === "files" && statusFilter === "all"}
+                        onClick={() => { setView("files"); setStatusFilter("all"); }}
+                        title="Arquivos enviados"
+                    >
+                        <span className="sidebar-stat-icon"><IconFolder /></span>
+                        {!sidebarCollapsed && (
+                            <div>
+                                <div className="sidebar-stat-value">{rows.length}</div>
+                                <div className="sidebar-stat-label">Arquivos enviados</div>
                             </div>
                         )}
                     </div>
+
+                    <div
+                        className="sidebar-stat sidebar-stat-users sidebar-stat-clickable"
+                        data-active={view === "usuarios"}
+                        onClick={() => setView("usuarios")}
+                        title="Usuários"
+                    >
+                        <span className="sidebar-stat-icon"><IconUsers /></span>
+                        {!sidebarCollapsed && (
+                            <div>
+                                <div className="sidebar-stat-value">{usuariosCount}</div>
+                                <div className="sidebar-stat-label">Usuários</div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div
+                        className="sidebar-stat sidebar-stat-completed sidebar-stat-clickable"
+                        data-active={view === "files" && statusFilter === "completed"}
+                        onClick={() => { setView("files"); setStatusFilter("completed"); }}
+                        title="Transcrições concluídas"
+                    >
+                        <span className="sidebar-stat-icon"><IconCheckCircle /></span>
+                        {!sidebarCollapsed && (
+                            <div>
+                                <div className="sidebar-stat-value">{concluidasCount}</div>
+                                <div className="sidebar-stat-label">Concluídas</div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div
+                        className="sidebar-stat sidebar-stat-pending sidebar-stat-clickable"
+                        data-active={view === "files" && statusFilter === "pending"}
+                        onClick={() => { setView("files"); setStatusFilter("pending"); }}
+                        title="Pendentes"
+                    >
+                        <span className="sidebar-stat-icon"><IconClock /></span>
+                        {!sidebarCollapsed && (
+                            <div>
+                                <div className="sidebar-stat-value">{pendentesCount}</div>
+                                <div className="sidebar-stat-label">Pendentes</div>
+                            </div>
+                        )}
+                    </div>
+
                 </nav>
 
                 <div className="sidebar-footer">
@@ -507,230 +912,518 @@ function Dashboard() {
             </aside>
 
             <main className="main-content">
+                <div className="top-bar">
+                    <div className="top-search">
+                        <IconSearch />
+                        <input
+                            type="text"
+                            placeholder="Buscar arquivo, curso ou aluno..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="top-bar-actions">
+                        <div className={`status-pill ${workerOnline ? "status-pill-ok" : "status-pill-off"}`}>
+                            <span className={`dot ${workerOnline ? "dot-online" : "dot-offline"}`} />
+                            Transcritor: {workerOnline ? "Ativo" : "Offline"}
+                        </div>
+                        <div className="top-bar-clock">{formatarHoraAgora()}</div>
+                        <button className="icon-btn" title="Atualizar" onClick={carregar}>
+                            <IconRefresh />
+                        </button>
+                        <div className="avatar" title={ADMIN_EMAIL}>
+                            {ADMIN_EMAIL.charAt(0).toUpperCase()}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="page-header">
-                    <h1>Painel do Transcritor</h1>
+                    <h1>
+                        {view === "usuarios"
+                            ? "Usuários"
+                            : view === "progresso"
+                                ? "Progresso"
+                                : view === "notificacoes"
+                                    ? "Notificações"
+                                    : view === "extensao"
+                                        ? "Extensão"
+                                        : view === "configuracoes"
+                                            ? "Configurações"
+                                            : "Painel do Transcritor"}
+                    </h1>
                     <div className="subtitle" style={{ marginBottom: 0 }}>
-                        Áudios enviados pela extensão e status da transcrição
+                        {view === "usuarios"
+                            ? "Quem está usando a extensão agora"
+                            : view === "progresso"
+                                ? "Progresso geral e por módulo do curso"
+                                : view === "notificacoes"
+                                    ? "Escolha quais avisos você quer receber"
+                                    : view === "extensao"
+                                        ? "Baixe a extensão e compartilhe com seus amigos"
+                                        : view === "configuracoes"
+                                            ? "Ajustes gerais do painel e da transcrição"
+                                            : "Áudios enviados pela extensão e status da transcrição"}
                     </div>
                 </div>
 
-                <div className="stats-grid">
-                <div
-                    className="stat-card stat-card-clickable"
-                    data-active={statusFilter === "all"}
-                    onClick={() => setStatusFilter("all")}
-                >
-                    <div className="stat-card-icon">📁</div>
-                    <div>
-                        <div className="stat-card-value">{rows.length}</div>
-                        <div className="stat-card-label">Arquivos enviados</div>
-                    </div>
-                </div>
+                {view === "progresso" && (
+                    <>
+                        <div className="card">
+                            <div className="section-title">Progresso geral do curso</div>
+                            <div className="progress-summary-row">
+                                <div className="progress-summary-item">
+                                    <div className="progress-summary-top">
+                                        <span className="progress-summary-label">Aulas concluídas</span>
+                                        <span className="progress-summary-value">
+                                            {progresso.completedLessons} de {progresso.totalLessons}
+                                        </span>
+                                    </div>
+                                    <div className="progress-track-lg">
+                                        <div
+                                            className="progress-fill-accent"
+                                            style={{
+                                                width: `${progresso.totalLessons > 0 ? Math.min(100, (progresso.completedLessons / progresso.totalLessons) * 100) : 0}%`
+                                            }}
+                                        />
+                                    </div>
+                                </div>
 
-                <div className="stat-card">
-                    <div className="stat-card-icon">👤</div>
-                    <div>
-                        <div className="stat-card-value">
-                            {new Set(rows.map((r) => r.uploaded_by).filter(Boolean)).size}
+                                <div className="progress-summary-item">
+                                    <div className="progress-summary-top">
+                                        <span className="progress-summary-label">Módulos concluídos</span>
+                                        <span className="progress-summary-value">
+                                            {progresso.completedModules} de {progresso.totalModules}
+                                        </span>
+                                    </div>
+                                    <div className="progress-track-lg">
+                                        <div
+                                            className="progress-fill-accent"
+                                            style={{
+                                                width: `${progresso.totalModules > 0 ? Math.min(100, (progresso.completedModules / progresso.totalModules) * 100) : 0}%`
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="stat-card-label">Usuários</div>
-                    </div>
-                </div>
 
-                <div
-                    className="stat-card stat-card-clickable"
-                    data-active={statusFilter === "completed"}
-                    onClick={() => setStatusFilter("completed")}
-                >
-                    <div className="stat-card-icon">✅</div>
-                    <div>
-                        <div className="stat-card-value">
-                            {rows.filter((r) => r.status === "completed").length}
+                        <div className="card">
+                            <div className="section-title">Progresso por módulo</div>
+                            <div className="module-progress-list">
+                                {modulosProgresso.length === 0 && (
+                                    <div className="empty" style={{ padding: 16 }}>Nenhum módulo cadastrado ainda.</div>
+                                )}
+                                {modulosProgresso.map((modulo) => {
+                                    const aulas = modulo.lessons || [];
+                                    const concluidas = aulas.filter((l) => l.status === "completed").length;
+                                    const total = modulo.total_lessons || 0;
+                                    const percentual = total > 0 ? Math.min(100, (concluidas / total) * 100) : 0;
+
+                                    return (
+                                        <div className="module-progress-row" key={modulo.id}>
+                                            <div className="module-progress-top">
+                                                <span className="module-progress-name">
+                                                    {modulo.module_number}. {modulo.name}
+                                                </span>
+                                                <span className="module-progress-value">
+                                                    {concluidas} de {total} · {Math.round(percentual)}%
+                                                </span>
+                                            </div>
+                                            <div className="progress-track-lg">
+                                                <div
+                                                    className="progress-fill-accent"
+                                                    style={{ width: `${percentual}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
-                        <div className="stat-card-label">Transcrições concluídas</div>
-                    </div>
-                </div>
+                    </>
+                )}
 
-                <div
-                    className="stat-card stat-card-clickable"
-                    data-active={statusFilter === "pending"}
-                    onClick={() => setStatusFilter("pending")}
-                >
-                    <div className="stat-card-icon">⏳</div>
-                    <div>
-                        <div className="stat-card-value">
-                            {rows.filter((r) => r.status !== "completed").length}
+                {view === "notificacoes" && (
+                    <div className="card">
+                        <div className="section-title">Preferências de notificação</div>
+
+                        <div className="settings-row">
+                            <span>Amigos online</span>
+                            <div
+                                className="switch"
+                                data-on={notifPrefs.amigosOnline}
+                                onClick={() => alternarNotifPref("amigosOnline")}
+                            >
+                                <div className="switch-dot" />
+                            </div>
                         </div>
-                        <div className="stat-card-label">Pendentes</div>
-                    </div>
-                </div>
-            </div>
 
-            <div className="card worker-panel">
-                <div className="worker-stat">
-                    <div className="worker-stat-icon">
-                        <span className={`dot ${workerOnline ? (worker.status === "processing" ? "dot-processing" : "dot-online") : "dot-offline"}`} />
-                    </div>
-                    <div>
-                        <div className="worker-stat-label">Transcritor</div>
-                        <div className="worker-stat-value">
-                            {!worker
-                                ? "Nunca conectado"
-                                : workerOnline
-                                ? (worker.status === "processing" ? "Processando" : "Online")
-                                : "Offline"}
+                        <div className="settings-row">
+                            <span>Áudio pendente de transcrição</span>
+                            <div
+                                className="switch"
+                                data-on={notifPrefs.audioPendente}
+                                onClick={() => alternarNotifPref("audioPendente")}
+                            >
+                                <div className="switch-dot" />
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div className="worker-stat">
-                    <div className="worker-stat-icon">🖥️</div>
-                    <div>
-                        <div className="worker-stat-label">GPU</div>
-                        <div className="worker-stat-value">
-                            {worker?.gpu_name || "—"}
+                        <div className="settings-row">
+                            <span>Transcrição concluída</span>
+                            <div
+                                className="switch"
+                                data-on={notifPrefs.transcricaoSucesso}
+                                onClick={() => alternarNotifPref("transcricaoSucesso")}
+                            >
+                                <div className="switch-dot" />
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div className="worker-stat">
-                    <div className="worker-stat-icon">🏷️</div>
-                    <div>
-                        <div className="worker-stat-label">Versão</div>
-                        <div className="worker-stat-value">
-                            {worker?.worker_version || "—"}
+                        <div className="settings-row">
+                            <span>Falha na transcrição</span>
+                            <div
+                                className="switch"
+                                data-on={notifPrefs.transcricaoFalha}
+                                onClick={() => alternarNotifPref("transcricaoFalha")}
+                            >
+                                <div className="switch-dot" />
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                )}
 
-            <div className="card">
+                {view === "extensao" && (
+                    <div className="card">
+                        <div className="section-title">Extensão A3-OS Recorder</div>
+                        <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
+                            Baixe o pacote da extensão para instalar no Chrome ou enviar para um amigo instalar no computador dele.
+                            O arquivo já vem configurado para se conectar ao mesmo banco de dados.
+                        </p>
+
+                        <a
+                            href="/a3-os-extension.zip"
+                            download
+                            className="btn-small"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, textDecoration: "none" }}
+                        >
+                            <IconDownload />
+                            Baixar extensão (.zip)
+                        </a>
+
+                        <div className="section-title" style={{ marginTop: 24 }}>Como instalar</div>
+                        <ol style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.9, paddingLeft: 18, maxWidth: 640 }}>
+                            <li>Baixe e descompacte o arquivo <strong>a3-os-extension.zip</strong> em uma pasta.</li>
+                            <li>Abra o Chrome e acesse <strong>chrome://extensions</strong>.</li>
+                            <li>Ative o <strong>Modo do desenvolvedor</strong> no canto superior direito.</li>
+                            <li>Clique em <strong>Carregar sem compactação</strong> e selecione a pasta descompactada.</li>
+                            <li>Pronto! A extensão vai aparecer na barra do Chrome.</li>
+                        </ol>
+                    </div>
+                )}
+
+                {view === "configuracoes" && (
+                    <div className="card">
+                        <div className="section-title">Transcrição</div>
+                        <div className="settings-row">
+                            <span>Transcrição automática</span>
+                            <div
+                                className="switch"
+                                data-on={autoTranscribe}
+                                onClick={alternarAuto}
+                            >
+                                <div className="switch-dot" />
+                            </div>
+                        </div>
+
+                        <div className="section-title" style={{ marginTop: 24 }}>Tema</div>
+                        <div className="theme-options">
+                            <div
+                                className="theme-option"
+                                data-active={theme === "dark"}
+                                onClick={() => alternarTema("dark")}
+                            >
+                                Escuro
+                            </div>
+                            <div
+                                className="theme-option"
+                                data-active={theme === "light"}
+                                onClick={() => alternarTema("light")}
+                            >
+                                Claro
+                            </div>
+                        </div>
+
+                        <div className="section-title" style={{ marginTop: 24 }}>Segurança</div>
+                        <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                            <span>Senha para excluir arquivos</span>
+                            <input
+                                type="password"
+                                placeholder={deletePasswordHash ? "Alterar senha" : "Definir senha"}
+                                value={newPasswordInput}
+                                onChange={(e) => setNewPasswordInput(e.target.value)}
+                                style={{ margin: 0 }}
+                            />
+                            <button
+                                className="btn-small"
+                                disabled={savingPassword}
+                                onClick={salvarSenhaExclusao}
+                            >
+                                {savingPassword ? "Salvando..." : "Salvar senha"}
+                            </button>
+                            {passwordSavedMsg && (
+                                <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                                    {passwordSavedMsg}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {view === "usuarios" && (
+                    <div className="card">
+                        <div className="section-title">
+                            {usuariosOnline} de {usuarios.length} online agora
+                        </div>
+                        <div className="connections-list">
+                            {usuarios.map((usuario) => {
+                                const online = userIsOnline(usuario);
+                                return (
+                                    <div className="connection-row" key={usuario.id}>
+                                        <div className="connection-icon" style={{ background: "rgba(124, 58, 237, .18)", color: "#7c3aed" }}>
+                                            <IconUsers />
+                                        </div>
+                                        <div className="connection-info">
+                                            <div className="connection-name">{usuario.display_name || "Sem nome"}</div>
+                                            <div className="connection-sub">
+                                                {online
+                                                    ? "Usando a extensão agora"
+                                                    : usuario.last_seen
+                                                        ? `Visto por último ${new Date(usuario.last_seen).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+                                                        : "Nunca conectou"}
+                                            </div>
+                                        </div>
+                                        <span className={`connection-pill ${online ? "" : "connection-pill-off"}`}>
+                                            {online ? "online" : "offline"}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {view === "files" && (
+                <>
+                <div className="card">
+                    <div className="section-title">Progresso do curso</div>
+                    <div className="progress-summary-row">
+                        <div className="progress-summary-item">
+                            <div className="progress-summary-top">
+                                <span className="progress-summary-label">Aulas concluídas</span>
+                                <span className="progress-summary-value">
+                                    {progresso.completedLessons} de {progresso.totalLessons}
+                                </span>
+                            </div>
+                            <div className="progress-track-lg">
+                                <div
+                                    className="progress-fill-accent"
+                                    style={{
+                                        width: `${progresso.totalLessons > 0 ? Math.min(100, (progresso.completedLessons / progresso.totalLessons) * 100) : 0}%`
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="progress-summary-item">
+                            <div className="progress-summary-top">
+                                <span className="progress-summary-label">Módulos concluídos</span>
+                                <span className="progress-summary-value">
+                                    {progresso.completedModules} de {progresso.totalModules}
+                                </span>
+                            </div>
+                            <div className="progress-track-lg">
+                                <div
+                                    className="progress-fill-accent"
+                                    style={{
+                                        width: `${progresso.totalModules > 0 ? Math.min(100, (progresso.completedModules / progresso.totalModules) * 100) : 0}%`
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="card chart-card">
+                    <div className="section-title">Áudios enviados (últimos 7 dias)</div>
+                    <div className="chart-bars">
+                        {chartData.map((d) => (
+                            <div className="chart-bar-col" key={d.key}>
+                                <div className="chart-bar-value">{d.count > 0 ? d.count : ""}</div>
+                                <div className="chart-bar-track">
+                                    <div
+                                        className="chart-bar-fill"
+                                        style={{ height: `${chartMax > 0 ? (d.count / chartMax) * 100 : 0}%` }}
+                                    />
+                                </div>
+                                <div className="chart-bar-label">{d.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+            <div className="card list-view">
                 {loading ? (
                     <div className="empty">Carregando...</div>
                 ) : rowsFiltradas.length === 0 ? (
                     <div className="empty">Nenhum áudio encontrado para esse filtro.</div>
                 ) : (
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Curso / Módulo / Aula</th>
-                                <th>Arquivo</th>
-                                <th>Enviado por</th>
-                                <th>Status do áudio</th>
-                                <th>Transcrição</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rowsFiltradas.map((row) => {
-                                const job = row.transcription_jobs?.[0];
-                                const podeTranscrever =
-                                    job &&
-                                    job.status === "pending" &&
-                                    !job.manual_requested &&
-                                    !autoTranscribe;
+                    rowsFiltradas.map((row) => {
+                        const job = row.transcription_jobs?.[0];
 
-                                return (
-                                    <tr key={row.id}>
-                                        <td>
-                                            <div className="lesson-title">
-                                                {row.courses?.name || "—"}
-                                            </div>
-                                            <div className="lesson-meta">
-                                                {row.modules
-                                                    ? `Módulo ${row.modules.module_number} — ${row.modules.name}`
-                                                    : "—"}
-                                            </div>
-                                            <div className="lesson-meta">
-                                                {row.lessons
-                                                    ? `${row.lessons.lesson_number} — ${row.lessons.title}`
-                                                    : "—"}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className="filename-link"
-                                                onClick={() => window.open(`/transcricao/${row.id}`, "_blank")}
-                                            >
-                                                {row.filename}
+                        return (
+                            <div className="list-row" key={row.id}>
+                                <div className="list-row-icon">
+                                    <IconAudio />
+                                </div>
+
+                                <div className="list-row-main">
+                                    <span
+                                        className="filename-link list-row-title"
+                                        onClick={() => window.open(`/transcricao/${row.id}`, "_blank")}
+                                    >
+                                        {row.filename}
+                                    </span>
+                                    <div className="list-row-path">
+                                        {row.courses?.name || "—"}
+                                        {row.modules ? ` / Módulo ${row.modules.module_number}` : ""}
+                                        {row.lessons ? ` / ${row.lessons.lesson_number} — ${row.lessons.title}` : ""}
+                                    </div>
+                                </div>
+
+                                <span className={`badge badge-${row.status} list-row-badge`}>
+                                    {STATUS_LABEL[row.status] || row.status}
+                                </span>
+
+                                <div className="list-row-meta">
+                                    <div className="list-row-meta-label">Enviado por</div>
+                                    <div>{row.profiles?.display_name || "—"}</div>
+                                </div>
+
+                                <div className="list-row-result">
+                                    {job ? (
+                                        <>
+                                            <span className={`badge badge-${job.status}`}>
+                                                {STATUS_LABEL[job.status] || job.status}
                                             </span>
-                                        </td>
-                                        <td>{row.profiles?.display_name || "—"}</td>
-                                        <td>
-                                            <span className={`badge badge-${row.status}`}>
-                                                {STATUS_LABEL[row.status] || row.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ minWidth: 160 }}>
-                                            {job ? (
-                                                <>
-                                                    <span className={`badge badge-${job.status}`}>
-                                                        {STATUS_LABEL[job.status] || job.status}
-                                                    </span>
-
-                                                    {job.status === "processing" && (
-                                                        <>
-                                                            <div className="progress-track">
-                                                                <div
-                                                                    className="progress-fill"
-                                                                    style={{ width: `${job.progress_percent || 0}%` }}
-                                                                />
-                                                            </div>
-                                                            <div className="progress-label">
-                                                                {(job.progress_percent || 0).toFixed(0)}%
-                                                            </div>
-                                                        </>
-                                                    )}
-
-                                                    {job.attempts > 0 && (
-                                                        <div style={{ color: "var(--text-dim)", fontSize: 11, marginTop: 4 }}>
-                                                            tentativas: {job.attempts}
-                                                        </div>
-                                                    )}
-                                                    {job.error_message && (
-                                                        <div style={{ color: "var(--err)", fontSize: 11, marginTop: 4 }}>
-                                                            {job.error_message}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                "—"
+                                            {job.status === "processing" && (
+                                                <div className="progress-track">
+                                                    <div
+                                                        className="progress-fill"
+                                                        style={{ width: `${job.progress_percent || 0}%` }}
+                                                    />
+                                                </div>
                                             )}
-                                        </td>
-                                        <td>
-                                            <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-                                                {job && job.status === "pending" && (
-                                                    <button
-                                                        className="btn-small"
-                                                        disabled={
-                                                            autoTranscribe ||
-                                                            job.manual_requested ||
-                                                            busyIds[job.id]
-                                                        }
-                                                        onClick={() => transcreverAgora(job.id)}
-                                                    >
-                                                        {job.manual_requested
-                                                            ? "Na fila"
-                                                            : "Transcrever agora"}
-                                                    </button>
-                                                )}
+                                            {job.error_message && (
+                                                <div style={{ color: "var(--err)", fontSize: 11, marginTop: 4 }}>
+                                                    {job.error_message}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        "—"
+                                    )}
+                                </div>
 
-                                                <button
-                                                    className="btn-small btn-danger"
-                                                    onClick={() => pedirExclusao(row)}
-                                                    title="Excluir arquivo"
-                                                >
-                                                    🗑️ Excluir
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                <div className="list-row-actions">
+                                    {job && job.status === "pending" && (
+                                        <button
+                                            className="btn-small"
+                                            disabled={autoTranscribe || job.manual_requested || busyIds[job.id]}
+                                            onClick={() => transcreverAgora(job.id)}
+                                        >
+                                            {job.manual_requested ? "Na fila" : "Transcrever agora"}
+                                        </button>
+                                    )}
+                                    <button
+                                        className="icon-btn"
+                                        title="Abrir transcrição"
+                                        onClick={() => window.open(`/transcricao/${row.id}`, "_blank")}
+                                    >
+                                        <IconEye />
+                                    </button>
+                                    <button
+                                        className="icon-btn icon-btn-danger"
+                                        onClick={() => pedirExclusao(row)}
+                                        title="Excluir arquivo"
+                                    >
+                                        <IconTrash />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })
                 )}
             </div>
+
+            <div className="bottom-columns">
+                <div className="card">
+                    <div className="section-title">Capacidades</div>
+                    <div className="capabilities-grid">
+                        {cursosAgrupados.length === 0 && (
+                            <div className="empty" style={{ padding: 16 }}>Nenhum curso ainda.</div>
+                        )}
+                        {cursosAgrupados.map((c) => (
+                            <div className="capability-card" key={c.nome}>
+                                <div className="capability-icon"><IconGraduation /></div>
+                                <div>
+                                    <div className="capability-name">{c.nome}</div>
+                                    <div className="capability-slug">{c.total} áudio{c.total === 1 ? "" : "s"}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="card">
+                    <div className="section-title">Conexões</div>
+                    <div className="connections-list">
+                        <div className="connection-row">
+                            <div className="connection-icon"><IconDatabase /></div>
+                            <div className="connection-info">
+                                <div className="connection-name">Supabase</div>
+                                <div className="connection-sub">Banco de dados e storage</div>
+                            </div>
+                            <span className="connection-pill">conectado</span>
+                        </div>
+
+                        <div className="connection-row">
+                            <div className="connection-icon"><IconServer /></div>
+                            <div className="connection-info">
+                                <div className="connection-name">Worker de transcrição</div>
+                                <div className="connection-sub">
+                                    {worker?.gpu_name || "—"} · v{worker?.worker_version || "—"}
+                                </div>
+                            </div>
+                            <span className={`connection-pill ${workerOnline ? "" : "connection-pill-off"}`}>
+                                {workerOnline ? "conectado" : "offline"}
+                            </span>
+                        </div>
+
+                        <div className="connection-row">
+                            <div className="connection-icon"><IconPuzzle /></div>
+                            <div className="connection-info">
+                                <div className="connection-name">Extensão do navegador</div>
+                                <div className="connection-sub">Envio automático de áudios</div>
+                            </div>
+                            <span className="connection-pill">conectado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                </>
+                )}
             </main>
 
             {deleteTarget && (
