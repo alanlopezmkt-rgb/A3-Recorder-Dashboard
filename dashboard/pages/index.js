@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { supabase, ADMIN_EMAIL } from "../lib/supabaseClient";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase, ADMIN_EMAIL, REMEMBER_ME_KEY } from "../lib/supabaseClient";
 
 export default function Home() {
     const [session, setSession] = useState(undefined);
@@ -32,6 +32,7 @@ export default function Home() {
 function Login({ isWrongUser }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [lembrar, setLembrar] = useState(true);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -43,6 +44,11 @@ function Login({ isWrongUser }) {
         if (isWrongUser) {
             await supabase.auth.signOut();
         }
+
+        // Precisa ser gravado antes do signIn: o cliente do Supabase le essa
+        // preferencia no momento em que grava a sessao (ver authStorage em
+        // lib/supabaseClient.js) para decidir entre localStorage e sessionStorage.
+        window.localStorage.setItem(REMEMBER_ME_KEY, lembrar ? "true" : "false");
 
         const { error: authError } = await supabase.auth.signInWithPassword({
             email,
@@ -84,6 +90,26 @@ function Login({ isWrongUser }) {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                 />
+
+                <label
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 13,
+                        color: "var(--text-dim)",
+                        margin: "4px 0 8px",
+                        cursor: "pointer"
+                    }}
+                >
+                    <input
+                        type="checkbox"
+                        checked={lembrar}
+                        onChange={(e) => setLembrar(e.target.checked)}
+                        style={{ margin: 0 }}
+                    />
+                    Lembrar-me
+                </label>
 
                 <button className="btn-primary" type="submit" disabled={loading}>
                     {loading ? "Entrando..." : "Entrar"}
@@ -290,6 +316,32 @@ function IconDownload() {
     );
 }
 
+function IconPlay() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="14" height="14">
+            <path d="M6 4.5v15l13-7.5-13-7.5z" />
+        </svg>
+    );
+}
+
+function IconPause() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="14" height="14">
+            <path d="M6 4.5h4v15H6v-15zM14 4.5h4v15h-4v-15z" />
+        </svg>
+    );
+}
+
+function IconInfo() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+            <circle cx="12" cy="12" r="9.5" />
+            <path d="M12 11v5.5" />
+            <path d="M12 7.6h.01" />
+        </svg>
+    );
+}
+
 function IconTrash() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
@@ -329,6 +381,16 @@ function Dashboard() {
     const [deletePasswordInput, setDeletePasswordInput] = useState("");
     const [deleteError, setDeleteError] = useState("");
     const [deleting, setDeleting] = useState(false);
+    const [detailsTarget, setDetailsTarget] = useState(null);
+    const [playingAudio, setPlayingAudio] = useState(null);
+    const [installCode, setInstallCode] = useState(null);
+    const [gerandoCodigo, setGerandoCodigo] = useState(false);
+    const [codigoCopiado, setCodigoCopiado] = useState(false);
+    const [downloadMsg, setDownloadMsg] = useState(null);
+    const [cursosConfig, setCursosConfig] = useState([]);
+    const [pastasCursos, setPastasCursos] = useState({});
+    const [salvandoPastaCurso, setSalvandoPastaCurso] = useState(null);
+    const [pastaSalvaMsg, setPastaSalvaMsg] = useState({});
     const [notifPrefs, setNotifPrefs] = useState({
         amigosOnline: true,
         audioPendente: true,
@@ -368,7 +430,26 @@ function Dashboard() {
             .select("id, display_name, last_seen")
             .order("display_name", { ascending: true });
 
-        setUsuarios(profiles || []);
+        const { data: userData } = await supabase.auth.getUser();
+        const adminId = userData?.user?.id;
+
+        setUsuarios((profiles || []).filter((usuario) => usuario.id !== adminId));
+
+        const { data: cursosConfigData } = await supabase
+            .from("courses")
+            .select("id, name, output_folder")
+            .order("name", { ascending: true });
+
+        setCursosConfig(cursosConfigData || []);
+        setPastasCursos((atual) => {
+            const proximo = { ...atual };
+            (cursosConfigData || []).forEach((curso) => {
+                if (proximo[curso.id] === undefined) {
+                    proximo[curso.id] = curso.output_folder || "";
+                }
+            });
+            return proximo;
+        });
 
         const { data: cursos } = await supabase
             .from("courses")
@@ -413,11 +494,14 @@ function Dashboard() {
                 created_at,
                 uploaded_by,
                 storage_path,
+                file_size,
+                duration,
                 profiles ( display_name ),
                 lessons ( title, lesson_number ),
                 modules ( name, module_number ),
+                course_id,
                 courses ( name ),
-                transcription_jobs ( id, status, attempts, manual_requested, error_message, progress_percent )
+                transcription_jobs ( id, status, attempts, manual_requested, cancel_requested, error_message, progress_percent, started_at, completed_at )
                 `
             )
             .order("created_at", { ascending: false });
@@ -482,7 +566,21 @@ function Dashboard() {
     }, []);
 
     useEffect(() => {
-        const timer = setInterval(() => setNow(Date.now()), 5000);
+        const timer = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        let emAndamento = false;
+        const timer = setInterval(async () => {
+            if (emAndamento) return;
+            emAndamento = true;
+            try {
+                await carregar();
+            } finally {
+                emAndamento = false;
+            }
+        }, 500);
         return () => clearInterval(timer);
     }, []);
 
@@ -581,6 +679,178 @@ function Dashboard() {
         new Notification(titulo, { body: corpo, icon: "/icon-a3.png" });
     }
 
+    function nomeExibicao(filename) {
+        if (!filename) return "";
+        return filename.replace(/_(\d{10,})(\.[a-zA-Z0-9]+)$/, "$2").replace(/_/g, " ");
+    }
+
+    function formatarBytes(bytes) {
+        if (bytes === null || bytes === undefined) return "—";
+        if (bytes === 0) return "0 B";
+        const unidades = ["B", "KB", "MB", "GB"];
+        const i = Math.min(unidades.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+        return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unidades[i]}`;
+    }
+
+    function formatarDuracao(segundos) {
+        if (segundos === null || segundos === undefined) return "—";
+        const total = Math.round(segundos);
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = total % 60;
+        if (h > 0) {
+            return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function tempoGpu(job) {
+        if (!job || !job.started_at || !job.completed_at) return "—";
+        const ms = new Date(job.completed_at).getTime() - new Date(job.started_at).getTime();
+        if (!Number.isFinite(ms) || ms < 0) return "—";
+        const segundos = Math.round(ms / 1000);
+        if (segundos < 60) return `${segundos}s`;
+        const m = Math.floor(segundos / 60);
+        const s = segundos % 60;
+        return `${m}m ${s}s`;
+    }
+
+    function formatarSegundos(segundos) {
+        const s = Math.max(0, Math.round(segundos));
+        if (s < 60) return `${s}s`;
+        const m = Math.floor(s / 60);
+        const rs = s % 60;
+        return `${m}m ${rs}s`;
+    }
+
+    // Taxa média de processamento da GPU (segundos de GPU por segundo de
+    // áudio), calculada a partir dos jobs já concluídos. Usada para estimar
+    // quanto falta para os jobs pendentes/em andamento.
+    const taxaGpuMedia = useMemo(() => {
+        const amostras = [];
+
+        rows.forEach((row) => {
+            const job = row.transcription_jobs?.[0];
+            if (
+                job &&
+                job.status === "completed" &&
+                job.started_at &&
+                job.completed_at &&
+                row.duration > 0
+            ) {
+                const gpuSegundos =
+                    (new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000;
+
+                if (gpuSegundos > 0) {
+                    amostras.push(gpuSegundos / row.duration);
+                }
+            }
+        });
+
+        if (amostras.length === 0) return null;
+        return amostras.reduce((a, b) => a + b, 0) / amostras.length;
+    }, [rows]);
+
+    function tempoDecorrido(job) {
+        if (!job || !job.started_at) return null;
+        const decorrido = (now - new Date(job.started_at).getTime()) / 1000;
+        if (!Number.isFinite(decorrido) || decorrido < 0) return null;
+        return formatarSegundos(decorrido);
+    }
+
+    function estimativaTranscricao(row, job) {
+        if (!taxaGpuMedia || !row.duration) return null;
+
+        const totalEstimadoSeg = taxaGpuMedia * row.duration;
+
+        if (job.status === "processing" && job.started_at) {
+            const decorrido = (now - new Date(job.started_at).getTime()) / 1000;
+            const restante = Math.max(0, totalEstimadoSeg - decorrido);
+            return `~${formatarSegundos(restante)} restantes`;
+        }
+
+        if (job.status === "pending") {
+            return `~${formatarSegundos(totalEstimadoSeg)} previsto`;
+        }
+
+        return null;
+    }
+
+    // O worker de transcrição nem sempre preenche audio_files.duration.
+    // Quando falta, medimos a duração real no navegador (sem tocar o áudio)
+    // e gravamos no banco pra próxima vez já vir preenchido.
+    async function garantirDuracao(row) {
+        if (row.duration || !row.storage_path) return;
+
+        const { data, error } = await supabase.storage
+            .from("audio")
+            .createSignedUrl(row.storage_path, 3600);
+
+        if (error || !data) return;
+
+        const probe = new Audio();
+        probe.preload = "metadata";
+        probe.src = data.signedUrl;
+        probe.addEventListener("loadedmetadata", () => {
+            const segundos = probe.duration;
+            if (Number.isFinite(segundos) && segundos > 0) {
+                supabase.from("audio_files").update({ duration: segundos }).eq("id", row.id);
+            }
+        });
+    }
+
+    async function tocarAudio(row) {
+        if (playingAudio && playingAudio.id === row.id) {
+            setPlayingAudio(null);
+            return;
+        }
+        setPlayingAudio({ id: row.id, url: null, loading: true });
+        const { data, error } = await supabase.storage
+            .from("audio")
+            .createSignedUrl(row.storage_path, 3600);
+
+        if (error || !data) {
+            setPlayingAudio(null);
+            return;
+        }
+        setPlayingAudio({ id: row.id, url: data.signedUrl, loading: false });
+        garantirDuracao(row);
+    }
+
+    function gerarCodigoAleatorio() {
+        const alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let codigo = "";
+        for (let i = 0; i < 8; i++) {
+            codigo += alfabeto[Math.floor(Math.random() * alfabeto.length)];
+        }
+        return codigo;
+    }
+
+    async function gerarCodigoInstalacao() {
+        setGerandoCodigo(true);
+        setInstallCode(null);
+
+        const codigo = gerarCodigoAleatorio();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+        const { data: userData } = await supabase.auth.getUser();
+
+        const { error } = await supabase.from("install_codes").insert({
+            code: codigo,
+            created_by: userData?.user?.id,
+            expires_at: expiresAt
+        });
+
+        setGerandoCodigo(false);
+
+        if (error) {
+            alert("Erro ao gerar código: " + error.message);
+            return;
+        }
+
+        setInstallCode({ code: codigo, expiresAt });
+    }
+
     useEffect(() => {
         const salvo = localStorage.getItem("dashboard-sidebar-collapsed");
         setSidebarCollapsed(salvo === "true");
@@ -610,6 +880,17 @@ function Dashboard() {
         await supabase
             .from("transcription_jobs")
             .update({ manual_requested: true })
+            .eq("id", jobId);
+
+        setBusyIds((prev) => ({ ...prev, [jobId]: false }));
+    }
+
+    async function pararTranscricao(jobId) {
+        setBusyIds((prev) => ({ ...prev, [jobId]: true }));
+
+        await supabase
+            .from("transcription_jobs")
+            .update({ cancel_requested: true })
             .eq("id", jobId);
 
         setBusyIds((prev) => ({ ...prev, [jobId]: false }));
@@ -651,6 +932,36 @@ function Dashboard() {
             setDeletePasswordHash(hash);
             setNewPasswordInput("");
             setPasswordSavedMsg("Senha de exclusão salva.");
+        }
+    }
+
+    function avisarDownloadConcluido(nomeArquivo) {
+        setDownloadMsg(`Download de "${nomeArquivo}" concluído com sucesso!`);
+        setTimeout(() => setDownloadMsg(null), 4000);
+    }
+
+    async function salvarPastaCurso(cursoId) {
+        setSalvandoPastaCurso(cursoId);
+        setPastaSalvaMsg((atual) => ({ ...atual, [cursoId]: "" }));
+
+        const valor = (pastasCursos[cursoId] || "").trim();
+
+        const { error } = await supabase
+            .from("courses")
+            .update({ output_folder: valor || null })
+            .eq("id", cursoId);
+
+        setSalvandoPastaCurso(null);
+
+        setPastaSalvaMsg((atual) => ({
+            ...atual,
+            [cursoId]: error ? "Erro ao salvar." : "Salvo."
+        }));
+
+        if (!error) {
+            setCursosConfig((atual) =>
+                atual.map((c) => (c.id === cursoId ? { ...c, output_folder: valor || null } : c))
+            );
         }
     }
 
@@ -728,10 +1039,21 @@ function Dashboard() {
         return true;
     });
 
-    const workerOnline =
+    const workerHeartbeatOnline =
         worker &&
         worker.last_seen &&
         (now - new Date(worker.last_seen).getTime()) / 1000 < WORKER_OFFLINE_AFTER_SECONDS;
+
+    const workerActivelyTranscribing =
+        worker &&
+        worker.current_job_id &&
+        rows.some((r) =>
+            (r.transcription_jobs || []).some(
+                (job) => job.id === worker.current_job_id && job.status === "processing"
+            )
+        );
+
+    const workerOnline = Boolean(workerHeartbeatOnline || workerActivelyTranscribing);
 
     const pendentesCount = rows.filter((r) => r.status !== "completed").length;
 
@@ -773,6 +1095,26 @@ function Dashboard() {
 
     return (
         <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+            {downloadMsg && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 20,
+                        right: 20,
+                        zIndex: 9999,
+                        background: "var(--accent, #16a34a)",
+                        color: "#fff",
+                        padding: "12px 18px",
+                        borderRadius: 10,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        boxShadow: "0 8px 24px rgba(0,0,0,.25)"
+                    }}
+                >
+                    ✓ {downloadMsg}
+                </div>
+            )}
+
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <img className="brand-badge" src="/icon-a3.png" alt="A3-OS" />
@@ -814,11 +1156,11 @@ function Dashboard() {
 
                     <button
                         className={`sidebar-item ${view === "extensao" ? "active" : ""}`}
-                        title="Extensão"
+                        title="Downloads"
                         onClick={() => setView("extensao")}
                     >
                         <IconDownload />
-                        {!sidebarCollapsed && <span>Extensão</span>}
+                        {!sidebarCollapsed && <span>Downloads</span>}
                     </button>
 
                     <button
@@ -1107,6 +1449,7 @@ function Dashboard() {
                             download
                             className="btn-small"
                             style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, textDecoration: "none" }}
+                            onClick={() => avisarDownloadConcluido("a3-os-extension.zip")}
                         >
                             <IconDownload />
                             Baixar extensão (.zip)
@@ -1120,6 +1463,98 @@ function Dashboard() {
                             <li>Clique em <strong>Carregar sem compactação</strong> e selecione a pasta descompactada.</li>
                             <li>Pronto! A extensão vai aparecer na barra do Chrome.</li>
                         </ol>
+                    </div>
+                )}
+
+                {view === "extensao" && (
+                    <div className="card" style={{ marginTop: 16 }}>
+                        <div className="section-title">Transcritor Local</div>
+                        <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
+                            O transcritor roda no seu computador e processa os áudios com a GPU local.
+                            Baixe o instalador, gere um código de instalação de uso único abaixo e cole
+                            quando o transcritor pedir na primeira execução. Ele já conecta sozinho a
+                            este painel e se registra no Agendador de Tarefas do Windows.
+                        </p>
+
+                        <a
+                            href="/TranscritorLocal-Setup.exe"
+                            download
+                            className="btn-small"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, textDecoration: "none" }}
+                            onClick={() => avisarDownloadConcluido("TranscritorLocal-Setup.exe")}
+                        >
+                            <IconDownload />
+                            Baixar Transcritor Local (.exe)
+                        </a>
+
+                        <div className="section-title" style={{ marginTop: 20, fontSize: 13 }}>Código de instalação</div>
+
+                        <button
+                            className="btn-small"
+                            style={{ marginTop: 8 }}
+                            onClick={gerarCodigoInstalacao}
+                            disabled={gerandoCodigo}
+                        >
+                            {gerandoCodigo ? "Gerando..." : "Gerar código de instalação"}
+                        </button>
+
+                        {installCode && (
+                            <div
+                                style={{
+                                    marginTop: 16,
+                                    padding: "14px 18px",
+                                    borderRadius: 10,
+                                    border: "1px solid var(--border-soft)",
+                                    background: "var(--bg-elevated, rgba(255,255,255,0.03))",
+                                    maxWidth: 320
+                                }}
+                            >
+                                <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 4 }}>
+                                    Código de instalação
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 3, fontFamily: "monospace" }}>
+                                        {installCode.code}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        title="Copiar código"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(installCode.code);
+                                            setCodigoCopiado(true);
+                                            setTimeout(() => setCodigoCopiado(false), 1500);
+                                        }}
+                                        style={{
+                                            background: "transparent",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            padding: 6,
+                                            borderRadius: 6,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            color: codigoCopiado ? "var(--accent, #16a34a)" : "var(--text-dim)"
+                                        }}
+                                    >
+                                        {codigoCopiado ? (
+                                            <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                                                <rect x="9" y="9" width="11" height="11" rx="2" />
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                                <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 6 }}>
+                                    {now < new Date(installCode.expiresAt).getTime()
+                                        ? `Expira em ${Math.max(0, Math.round((new Date(installCode.expiresAt).getTime() - now) / 1000 / 60))} min`
+                                        : "Expirado — gere um novo código"}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1178,6 +1613,55 @@ function Dashboard() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {view === "configuracoes" && (
+                    <div className="card" style={{ marginTop: 16 }}>
+                        <div className="section-title">Base de conhecimento</div>
+                        <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
+                            Defina, por curso, a pasta no seu computador onde o Transcritor Local deve
+                            salvar os arquivos .md assim que a transcrição for concluída. Deixe em
+                            branco para não salvar cópia em nenhuma pasta.
+                        </p>
+
+                        {cursosConfig.length === 0 && (
+                            <div style={{ color: "var(--text-dim)", fontSize: 13, marginTop: 12 }}>
+                                Nenhum curso cadastrado ainda.
+                            </div>
+                        )}
+
+                        {cursosConfig.map((curso) => (
+                            <div
+                                key={curso.id}
+                                className="settings-row"
+                                style={{ flexDirection: "column", alignItems: "stretch", gap: 6, marginTop: 16 }}
+                            >
+                                <span>{curso.name}</span>
+                                <input
+                                    type="text"
+                                    placeholder="Ex: C:\Users\alanl\Documents\Trabalho\Cursos-Obsidian\raw\transcricoes"
+                                    value={pastasCursos[curso.id] ?? ""}
+                                    onChange={(e) =>
+                                        setPastasCursos((atual) => ({ ...atual, [curso.id]: e.target.value }))
+                                    }
+                                    style={{ margin: 0 }}
+                                />
+                                <button
+                                    className="btn-small"
+                                    style={{ alignSelf: "flex-start" }}
+                                    disabled={salvandoPastaCurso === curso.id}
+                                    onClick={() => salvarPastaCurso(curso.id)}
+                                >
+                                    {salvandoPastaCurso === curso.id ? "Salvando..." : "Salvar pasta"}
+                                </button>
+                                {pastaSalvaMsg[curso.id] && (
+                                    <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                                        {pastaSalvaMsg[curso.id]}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
 
@@ -1291,15 +1775,31 @@ function Dashboard() {
                                 <div className="list-row-main">
                                     <span
                                         className="filename-link list-row-title"
+                                        title={row.filename}
                                         onClick={() => window.open(`/transcricao/${row.id}`, "_blank")}
                                     >
-                                        {row.filename}
+                                        {nomeExibicao(row.filename)}
                                     </span>
                                     <div className="list-row-path">
                                         {row.courses?.name || "—"}
                                         {row.modules ? ` / Módulo ${row.modules.module_number}` : ""}
                                         {row.lessons ? ` / ${row.lessons.lesson_number} — ${row.lessons.title}` : ""}
                                     </div>
+                                    {playingAudio && playingAudio.id === row.id && (
+                                        <div className="audio-player-wrap">
+                                            {playingAudio.loading ? (
+                                                <span className="progress-label">Carregando áudio...</span>
+                                            ) : (
+                                                <audio
+                                                    className="audio-player"
+                                                    src={playingAudio.url}
+                                                    controls
+                                                    autoPlay
+                                                    onEnded={() => setPlayingAudio(null)}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <span className={`badge badge-${row.status} list-row-badge`}>
@@ -1318,11 +1818,27 @@ function Dashboard() {
                                                 {STATUS_LABEL[job.status] || job.status}
                                             </span>
                                             {job.status === "processing" && (
-                                                <div className="progress-track">
-                                                    <div
-                                                        className="progress-fill"
-                                                        style={{ width: `${job.progress_percent || 0}%` }}
-                                                    />
+                                                <>
+                                                    <div className="progress-track">
+                                                        <div
+                                                            className="progress-fill"
+                                                            style={{ width: `${job.progress_percent || 0}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="progress-label">
+                                                        {Math.round(job.progress_percent || 0)}%
+                                                        {tempoDecorrido(job) && (
+                                                            <> · {tempoDecorrido(job)} decorridos</>
+                                                        )}
+                                                        {estimativaTranscricao(row, job) && (
+                                                            <> · {estimativaTranscricao(row, job)}</>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+                                            {job.status === "pending" && estimativaTranscricao(row, job) && (
+                                                <div className="progress-label">
+                                                    {estimativaTranscricao(row, job)}
                                                 </div>
                                             )}
                                             {job.error_message && (
@@ -1346,6 +1862,32 @@ function Dashboard() {
                                             {job.manual_requested ? "Na fila" : "Transcrever agora"}
                                         </button>
                                     )}
+                                    {job && job.status === "processing" && (
+                                        <button
+                                            className="btn-small"
+                                            disabled={job.cancel_requested || busyIds[job.id]}
+                                            onClick={() => pararTranscricao(job.id)}
+                                        >
+                                            {job.cancel_requested ? "Parando..." : "Parar"}
+                                        </button>
+                                    )}
+                                    <button
+                                        className="icon-btn"
+                                        title={playingAudio?.id === row.id ? "Pausar áudio" : "Ouvir áudio"}
+                                        onClick={() => tocarAudio(row)}
+                                    >
+                                        {playingAudio?.id === row.id && !playingAudio.loading ? <IconPause /> : <IconPlay />}
+                                    </button>
+                                    <button
+                                        className="icon-btn"
+                                        title="Detalhes"
+                                        onClick={() => {
+                                            setDetailsTarget(row);
+                                            garantirDuracao(row);
+                                        }}
+                                    >
+                                        <IconInfo />
+                                    </button>
                                     <button
                                         className="icon-btn"
                                         title="Abrir transcrição"
@@ -1425,6 +1967,78 @@ function Dashboard() {
                 </>
                 )}
             </main>
+
+            {detailsTarget && (
+                <div className="modal-overlay" onClick={() => setDetailsTarget(null)}>
+                    <div className="card modal-box" onClick={(e) => e.stopPropagation()}>
+                        <h1 style={{ fontSize: 16 }}>Detalhes do áudio</h1>
+                        <div className="subtitle" title={detailsTarget.filename}>
+                            {nomeExibicao(detailsTarget.filename)}
+                        </div>
+
+                        <div className="details-grid">
+                            <div className="details-row">
+                                <span className="details-label">Duração do áudio</span>
+                                <span className="details-value">{formatarDuracao(detailsTarget.duration)}</span>
+                            </div>
+                            <div className="details-row">
+                                <span className="details-label">Tamanho do arquivo</span>
+                                <span className="details-value">{formatarBytes(detailsTarget.file_size)}</span>
+                            </div>
+                            <div className="details-row">
+                                <span className="details-label">Tempo de transcrição (GPU)</span>
+                                <span className="details-value">
+                                    {tempoGpu(detailsTarget.transcription_jobs?.[0])}
+                                </span>
+                            </div>
+                            {["pending", "processing"].includes(detailsTarget.transcription_jobs?.[0]?.status) && (
+                                <div className="details-row">
+                                    <span className="details-label">Estimativa</span>
+                                    <span className="details-value">
+                                        {estimativaTranscricao(detailsTarget, detailsTarget.transcription_jobs[0]) ||
+                                            "Calculando..."}
+                                    </span>
+                                </div>
+                            )}
+                            {detailsTarget.transcription_jobs?.[0]?.status === "completed" && (
+                                <div className="details-row">
+                                    <span className="details-label">Arquivo .md salvo em</span>
+                                    <span className="details-value" style={{ wordBreak: "break-all", textAlign: "right" }}>
+                                        {(() => {
+                                            const curso = cursosConfig.find((c) => c.id === detailsTarget.course_id);
+                                            if (!curso?.output_folder) return "Pasta não configurada (aba Configurações)";
+                                            const nomeBase = detailsTarget.filename
+                                                .replace(/\.[^./\\]+$/, "")
+                                                .replace(/_\d{10,}$/, "");
+                                            return `${curso.output_folder.replace(/[\\/]+$/, "")}\\${nomeBase}.md`;
+                                        })()}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="details-row">
+                                <span className="details-label">Enviado por</span>
+                                <span className="details-value">{detailsTarget.profiles?.display_name || "—"}</span>
+                            </div>
+                            <div className="details-row">
+                                <span className="details-label">Enviado em</span>
+                                <span className="details-value">
+                                    {detailsTarget.created_at
+                                        ? new Date(detailsTarget.created_at).toLocaleString("pt-BR")
+                                        : "—"}
+                                </span>
+                            </div>
+                        </div>
+
+                        <button
+                            className="btn-secondary"
+                            style={{ width: "100%", marginTop: 4 }}
+                            onClick={() => setDetailsTarget(null)}
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {deleteTarget && (
                 <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>

@@ -271,7 +271,7 @@ h1 {
     margin-bottom: 20px;
 }
 
-input {
+input:not([type="checkbox"]):not([type="radio"]) {
     width: 100%;
     padding: 11px 13px;
     margin-bottom: 12px;
@@ -284,9 +284,18 @@ input {
     transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-input:focus {
+input:not([type="checkbox"]):not([type="radio"]):focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    accent-color: var(--accent);
+    cursor: pointer;
 }
 
 button {
@@ -604,6 +613,46 @@ button:active {
 .modal-box {
     width: 100%;
     max-width: 380px;
+}
+
+.details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 14px 0 18px;
+}
+
+.details-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.details-row:last-child {
+    border-bottom: none;
+}
+
+.details-label {
+    font-size: 12.5px;
+    color: var(--text-faint);
+}
+
+.details-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.audio-player-wrap {
+    margin-top: 8px;
+}
+
+.audio-player {
+    width: 100%;
+    height: 32px;
 }
 
 /* ---------- worker status panel ---------- */

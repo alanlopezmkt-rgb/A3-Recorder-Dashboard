@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, session } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const http = require("http");
 const { spawn } = require("child_process");
 
@@ -9,6 +10,24 @@ let mainWindow = null;
 let tray = null;
 let serverProcess = null;
 let isQuitting = false;
+
+const logFilePath = path.join(app.getPath("userData"), "main.log");
+
+function log(...args) {
+    const line = `[${new Date().toISOString()}] ${args.map((a) => (a instanceof Error ? a.stack : String(a))).join(" ")}\n`;
+    console.log(line.trim());
+    try {
+        fs.appendFileSync(logFilePath, line);
+    } catch {
+        // ignora falha ao gravar log
+    }
+}
+
+process.on("uncaughtException", (error) => {
+    log("uncaughtException:", error);
+});
+
+app.setAppUserModelId("A3-OS Dashboard");
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
@@ -21,6 +40,13 @@ function getServerPath() {
         return path.join(process.resourcesPath, "app", "server.js");
     }
     return path.join(__dirname, "..", "dashboard", ".next", "standalone", "server.js");
+}
+
+function getIconPath() {
+    if (app.isPackaged) {
+        return path.join(process.resourcesPath, "build", "icon.png");
+    }
+    return path.join(__dirname, "build", "icon.png");
 }
 
 function isServerAlreadyRunning() {
@@ -38,31 +64,39 @@ function isServerAlreadyRunning() {
 
 async function startServer() {
     if (await isServerAlreadyRunning()) {
+        log("Servidor já respondendo, não vou iniciar outro.");
         return;
     }
 
     const serverPath = getServerPath();
+    log("Iniciando servidor da dashboard em:", serverPath, "existe:", fs.existsSync(serverPath));
 
     serverProcess = spawn(process.execPath, [serverPath], {
-        env: { ...process.env, PORT: String(PORT), HOSTNAME: "127.0.0.1", NODE_ENV: "production" },
+        env: { ...process.env, PORT: String(PORT), HOSTNAME: "127.0.0.1", NODE_ENV: "production", ELECTRON_RUN_AS_NODE: "1" },
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
     });
 
     serverProcess.stdout.on("data", (data) => {
-        console.log(`[dashboard-server] ${data}`);
+        log(`[dashboard-server]`, data.toString());
     });
 
     serverProcess.stderr.on("data", (data) => {
-        console.error(`[dashboard-server] ${data}`);
+        log(`[dashboard-server:err]`, data.toString());
     });
 
     serverProcess.on("error", (error) => {
-        console.error("Falha ao iniciar o servidor da dashboard:", error);
+        log("Falha ao iniciar o servidor da dashboard:", error);
+    });
+
+    serverProcess.on("exit", (code, signal) => {
+        log(`[dashboard-server] processo encerrado. code=${code} signal=${signal}`);
     });
 }
 
 function waitForServer(retries = 60) {
+    let lastError = null;
+
     return new Promise((resolve, reject) => {
         const tryOnce = (remaining) => {
             const request = http.get(`http://127.0.0.1:${PORT}`, () => {
@@ -70,10 +104,11 @@ function waitForServer(retries = 60) {
                 resolve();
             });
 
-            request.on("error", () => {
+            request.on("error", (error) => {
+                lastError = error;
                 request.destroy();
                 if (remaining <= 0) {
-                    reject(new Error("O servidor da dashboard não respondeu a tempo."));
+                    reject(new Error(`O servidor da dashboard não respondeu a tempo. ${lastError ? lastError.message : ""}`));
                     return;
                 }
                 setTimeout(() => tryOnce(remaining - 1), 500);
@@ -84,6 +119,19 @@ function waitForServer(retries = 60) {
     });
 }
 
+function configurarPermissoesNotificacao() {
+    // Sem um handler explicito, o Electron nega silenciosamente o pedido de
+    // permissao de notificacao feito pelo Notification.requestPermission()
+    // da pagina, entao os avisos de "Transcricao concluida" etc nunca
+    // aparecem — mesmo a pagina achando que tem permissao concedida.
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+        callback(permission === "notifications");
+    });
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+        return permission === "notifications";
+    });
+}
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1280,
@@ -91,7 +139,7 @@ function createWindow() {
         minWidth: 960,
         minHeight: 640,
         title: "A3-OS Dashboard",
-        icon: path.join(__dirname, "build", "icon.png"),
+        icon: getIconPath(),
         backgroundColor: "#0b0b16",
         autoHideMenuBar: true,
         webPreferences: {
@@ -100,10 +148,19 @@ function createWindow() {
         },
     });
 
+    log("Carregando janela em", `http://127.0.0.1:${PORT}`);
     mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
 
     mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
-        console.error(`[window] falha ao carregar: ${errorCode} ${errorDescription}`);
+        log(`[window] falha ao carregar: ${errorCode} ${errorDescription}`);
+    });
+
+    mainWindow.webContents.on("render-process-gone", (_event, details) => {
+        log("[window] render-process-gone:", JSON.stringify(details));
+    });
+
+    mainWindow.webContents.on("did-finish-load", () => {
+        log("[window] did-finish-load ok");
     });
 
     if (!app.isPackaged) {
@@ -120,7 +177,7 @@ function createWindow() {
 }
 
 function createTray() {
-    const icon = nativeImage.createFromPath(path.join(__dirname, "build", "icon.png"));
+    const icon = nativeImage.createFromPath(getIconPath());
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
     tray.setToolTip("A3-OS Dashboard");
 
@@ -168,12 +225,19 @@ if (singleInstanceLock) {
     });
 
     app.whenReady().then(async () => {
+        log("App pronto. isPackaged =", app.isPackaged, "resourcesPath =", process.resourcesPath);
+        configurarPermissoesNotificacao();
         await startServer();
 
         try {
             await waitForServer();
+            log("Servidor respondendo em http://127.0.0.1:" + PORT);
         } catch (error) {
-            console.error(error);
+            log("Erro esperando o servidor:", error);
+            dialog.showErrorBox(
+                "A3-OS Dashboard - erro ao iniciar",
+                `Não foi possível iniciar o servidor da dashboard.\n\n${error.message}\n\nLog completo em:\n${logFilePath}`
+            );
         }
 
         createWindow();

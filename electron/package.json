@@ -28,6 +28,10 @@
             {
                 "from": "../dashboard/.next/standalone",
                 "to": "app"
+            },
+            {
+                "from": "build",
+                "to": "build"
             }
         ],
         "win": {
