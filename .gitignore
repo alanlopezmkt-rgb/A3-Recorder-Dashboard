@@ -1,0 +1,5 @@
+.superpowers/
+node_modules/
+dashboard/.next/
+electron/dist/
+electron/node_modules/
