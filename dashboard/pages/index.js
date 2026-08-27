@@ -387,10 +387,6 @@ function Dashboard() {
     const [gerandoCodigo, setGerandoCodigo] = useState(false);
     const [codigoCopiado, setCodigoCopiado] = useState(false);
     const [downloadMsg, setDownloadMsg] = useState(null);
-    const [cursosConfig, setCursosConfig] = useState([]);
-    const [pastasCursos, setPastasCursos] = useState({});
-    const [salvandoPastaCurso, setSalvandoPastaCurso] = useState(null);
-    const [pastaSalvaMsg, setPastaSalvaMsg] = useState({});
     const [notifPrefs, setNotifPrefs] = useState({
         amigosOnline: true,
         audioPendente: true,
@@ -434,22 +430,6 @@ function Dashboard() {
         const adminId = userData?.user?.id;
 
         setUsuarios((profiles || []).filter((usuario) => usuario.id !== adminId));
-
-        const { data: cursosConfigData } = await supabase
-            .from("courses")
-            .select("id, name, output_folder")
-            .order("name", { ascending: true });
-
-        setCursosConfig(cursosConfigData || []);
-        setPastasCursos((atual) => {
-            const proximo = { ...atual };
-            (cursosConfigData || []).forEach((curso) => {
-                if (proximo[curso.id] === undefined) {
-                    proximo[curso.id] = curso.output_folder || "";
-                }
-            });
-            return proximo;
-        });
 
         const { data: cursos } = await supabase
             .from("courses")
@@ -938,31 +918,6 @@ function Dashboard() {
     function avisarDownloadConcluido(nomeArquivo) {
         setDownloadMsg(`Download de "${nomeArquivo}" concluído com sucesso!`);
         setTimeout(() => setDownloadMsg(null), 4000);
-    }
-
-    async function salvarPastaCurso(cursoId) {
-        setSalvandoPastaCurso(cursoId);
-        setPastaSalvaMsg((atual) => ({ ...atual, [cursoId]: "" }));
-
-        const valor = (pastasCursos[cursoId] || "").trim();
-
-        const { error } = await supabase
-            .from("courses")
-            .update({ output_folder: valor || null })
-            .eq("id", cursoId);
-
-        setSalvandoPastaCurso(null);
-
-        setPastaSalvaMsg((atual) => ({
-            ...atual,
-            [cursoId]: error ? "Erro ao salvar." : "Salvo."
-        }));
-
-        if (!error) {
-            setCursosConfig((atual) =>
-                atual.map((c) => (c.id === cursoId ? { ...c, output_folder: valor || null } : c))
-            );
-        }
     }
 
     function pedirExclusao(row) {
@@ -1620,48 +1575,10 @@ function Dashboard() {
                     <div className="card" style={{ marginTop: 16 }}>
                         <div className="section-title">Base de conhecimento</div>
                         <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
-                            Defina, por curso, a pasta no seu computador onde o Transcritor Local deve
-                            salvar os arquivos .md assim que a transcrição for concluída. Deixe em
-                            branco para não salvar cópia em nenhuma pasta.
+                            A gravação de cada pessoa é automaticamente salva na base de conhecimento pessoal dela
+                            e, quando é conteúdo de curso, também na base consolidada da A3. Não é mais necessário
+                            configurar pastas manualmente.
                         </p>
-
-                        {cursosConfig.length === 0 && (
-                            <div style={{ color: "var(--text-dim)", fontSize: 13, marginTop: 12 }}>
-                                Nenhum curso cadastrado ainda.
-                            </div>
-                        )}
-
-                        {cursosConfig.map((curso) => (
-                            <div
-                                key={curso.id}
-                                className="settings-row"
-                                style={{ flexDirection: "column", alignItems: "stretch", gap: 6, marginTop: 16 }}
-                            >
-                                <span>{curso.name}</span>
-                                <input
-                                    type="text"
-                                    placeholder="Ex: C:\Users\alanl\Documents\Trabalho\Cursos-Obsidian\raw\transcricoes"
-                                    value={pastasCursos[curso.id] ?? ""}
-                                    onChange={(e) =>
-                                        setPastasCursos((atual) => ({ ...atual, [curso.id]: e.target.value }))
-                                    }
-                                    style={{ margin: 0 }}
-                                />
-                                <button
-                                    className="btn-small"
-                                    style={{ alignSelf: "flex-start" }}
-                                    disabled={salvandoPastaCurso === curso.id}
-                                    onClick={() => salvarPastaCurso(curso.id)}
-                                >
-                                    {salvandoPastaCurso === curso.id ? "Salvando..." : "Salvar pasta"}
-                                </button>
-                                {pastaSalvaMsg[curso.id] && (
-                                    <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                                        {pastaSalvaMsg[curso.id]}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
                     </div>
                 )}
 
@@ -2005,12 +1922,7 @@ function Dashboard() {
                                     <span className="details-label">Arquivo .md salvo em</span>
                                     <span className="details-value" style={{ wordBreak: "break-all", textAlign: "right" }}>
                                         {(() => {
-                                            const curso = cursosConfig.find((c) => c.id === detailsTarget.course_id);
-                                            if (!curso?.output_folder) return "Pasta não configurada (aba Configurações)";
-                                            const nomeBase = detailsTarget.filename
-                                                .replace(/\.[^./\\]+$/, "")
-                                                .replace(/_\d{10,}$/, "");
-                                            return `${curso.output_folder.replace(/[\\/]+$/, "")}\\${nomeBase}.md`;
+                                            return "Salvo automaticamente na base de conhecimento pessoal (e na central, se aplicável)";
                                         })()}
                                     </span>
                                 </div>
