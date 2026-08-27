@@ -1,4 +1,4 @@
-$src = Join-Path $PSScriptRoot "..\..\extension"
+$src = Join-Path $PSScriptRoot "..\..\..\A3-Recorder-split\extension"
 $dst = Join-Path $PSScriptRoot "..\public\a3-os-extension.zip"
 
 if (Test-Path $dst) {
