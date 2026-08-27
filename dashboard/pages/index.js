@@ -613,7 +613,7 @@ function Dashboard() {
         if (prevAudioIdsRef.current && notifPrefsRef.current.audioPendente) {
             rows.forEach((r) => {
                 if (pendingIds.has(r.id) && !prevAudioIdsRef.current.has(r.id)) {
-                    notificar("Novo áudio pendente", `${r.filename || "Um áudio"} está aguardando transcrição.`);
+                    notificar("Novo áudio pendente", `${nomeExibicao(r.filename) || "Um áudio"} está aguardando transcrição.`);
                 }
             });
         }
@@ -625,9 +625,9 @@ function Dashboard() {
                     return;
                 }
                 if (r.status === "completed" && notifPrefsRef.current.transcricaoSucesso) {
-                    notificar("Transcrição concluída", `${r.filename || "Um áudio"} foi transcrito com sucesso.`);
+                    notificar("Transcrição concluída", `${nomeExibicao(r.filename) || "Um áudio"} foi transcrito com sucesso.`);
                 } else if (r.status === "failed" && notifPrefsRef.current.transcricaoFalha) {
-                    notificar("Falha na transcrição", `${r.filename || "Um áudio"} falhou ao transcrever.`);
+                    notificar("Falha na transcrição", `${nomeExibicao(r.filename) || "Um áudio"} falhou ao transcrever.`);
                 }
             });
         }
