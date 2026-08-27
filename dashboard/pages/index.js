@@ -900,6 +900,23 @@ function Dashboard() {
         setBusyIds((prev) => ({ ...prev, [jobId]: false }));
     }
 
+    async function tentarNovamente(jobId) {
+        setBusyIds((prev) => ({ ...prev, [jobId]: true }));
+
+        await supabase
+            .from("transcription_jobs")
+            .update({
+                status: "pending",
+                manual_requested: true,
+                error_message: null,
+                progress_percent: 0,
+                started_at: null,
+            })
+            .eq("id", jobId);
+
+        setBusyIds((prev) => ({ ...prev, [jobId]: false }));
+    }
+
     async function pararTranscricao(jobId) {
         setBusyIds((prev) => ({ ...prev, [jobId]: true }));
 
@@ -1844,6 +1861,16 @@ function Dashboard() {
                                             onClick={() => pararTranscricao(job.id)}
                                         >
                                             {job.cancel_requested ? "Parando..." : "Parar"}
+                                        </button>
+                                    )}
+                                    {job && job.status === "failed" && (
+                                        <button
+                                            className="icon-btn"
+                                            title="Tentar novamente"
+                                            disabled={busyIds[job.id]}
+                                            onClick={() => tentarNovamente(job.id)}
+                                        >
+                                            <IconRefresh />
                                         </button>
                                     )}
                                     <button
