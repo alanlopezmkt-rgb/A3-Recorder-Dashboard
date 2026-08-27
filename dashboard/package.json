@@ -1,0 +1,17 @@
+{
+    "name": "a3-os-dashboard",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "npm run zip:extension && next build",
+        "start": "next start",
+        "zip:extension": "powershell -ExecutionPolicy Bypass -File scripts/zip-extension.ps1"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.45.4",
+        "next": "^16.3.2",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1"
+    }
+}
