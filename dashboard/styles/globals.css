@@ -31,6 +31,25 @@
     --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6), 0 0 40px -22px rgba(124, 58, 237, 0.45);
 }
 
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--panel-3);
+    border-radius: 999px;
+    border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
+}
+
 :root[data-theme="light"] {
     color-scheme: light;
     --bg: #f4f5f9;
