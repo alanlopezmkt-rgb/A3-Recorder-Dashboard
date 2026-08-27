@@ -900,6 +900,32 @@ function Dashboard() {
         setBusyIds((prev) => ({ ...prev, [jobId]: false }));
     }
 
+    function copiarTexto(texto) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(texto).catch(() => {
+                copiarTextoFallback(texto);
+            });
+        } else {
+            copiarTextoFallback(texto);
+        }
+    }
+
+    function copiarTextoFallback(texto) {
+        const textarea = document.createElement("textarea");
+        textarea.value = texto;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+            document.execCommand("copy");
+        } catch {
+            // sem suporte a nenhum método de cópia; usuário copia manualmente
+        }
+        document.body.removeChild(textarea);
+    }
+
     async function tentarNovamente(jobId) {
         setBusyIds((prev) => ({ ...prev, [jobId]: true }));
 
@@ -1527,7 +1553,7 @@ function Dashboard() {
                                         type="button"
                                         title="Copiar código"
                                         onClick={() => {
-                                            navigator.clipboard.writeText(installCode.code);
+                                            copiarTexto(installCode.code);
                                             setCodigoCopiado(true);
                                             setTimeout(() => setCodigoCopiado(false), 1500);
                                         }}
