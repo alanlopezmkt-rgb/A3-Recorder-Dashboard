@@ -365,6 +365,7 @@ function Dashboard() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [view, setView] = useState("files");
     const [usuarios, setUsuarios] = useState([]);
+    const [progressoPorPessoa, setProgressoPorPessoa] = useState({});
     const [progresso, setProgresso] = useState({
         totalLessons: 0,
         completedLessons: 0,
@@ -430,6 +431,40 @@ function Dashboard() {
         const adminId = userData?.user?.id;
 
         setUsuarios((profiles || []).filter((usuario) => usuario.id !== adminId));
+
+        const { data: aulasPorPessoa } = await supabase
+            .from("audio_files")
+            .select("uploaded_by, status")
+            .not("uploaded_by", "is", null);
+
+        const { data: totalAulasCurso } = await supabase
+            .from("lessons")
+            .select("id", { count: "exact", head: true });
+
+        const { data: contribuicoes } = await supabase
+            .from("knowledge_sync_status")
+            .select("person_id, status")
+            .eq("status", "synced");
+
+        const totalAulas = totalAulasCurso?.length ?? 0;
+
+        const progressoPorPessoa = {};
+        (profiles || []).forEach((p) => {
+            const aulasConcluidas = (aulasPorPessoa || []).filter(
+                (a) => a.uploaded_by === p.id && a.status === "completed"
+            ).length;
+            const contribuicoesPessoa = (contribuicoes || []).filter((c) => c.person_id === p.id).length;
+            const totalContribuicoes = (contribuicoes || []).length;
+
+            progressoPorPessoa[p.id] = {
+                aulasConcluidas,
+                percentCurso: totalAulas > 0 ? Math.min(100, (aulasConcluidas / totalAulas) * 100) : 0,
+                contribuicoesPessoa,
+                percentContribuicao: totalContribuicoes > 0 ? Math.min(100, (contribuicoesPessoa / totalContribuicoes) * 100) : 0,
+            };
+        });
+
+        setProgressoPorPessoa(progressoPorPessoa);
 
         const { data: cursos } = await supabase
             .from("courses")
@@ -1605,6 +1640,29 @@ function Dashboard() {
                                                         : "Nunca conectou"}
                                             </div>
                                         </div>
+                                        {(() => {
+                                            const prog = progressoPorPessoa[usuario.id] || { percentCurso: 0, aulasConcluidas: 0, percentContribuicao: 0, contribuicoesPessoa: 0 };
+                                            return (
+                                                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160, marginRight: 12 }}>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                                                            Progresso do curso — {prog.aulasConcluidas} aulas
+                                                        </div>
+                                                        <div className="progress-track-lg">
+                                                            <div className="progress-fill-accent" style={{ width: `${prog.percentCurso}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                                                            Contribuição à base central — {prog.contribuicoesPessoa} aulas
+                                                        </div>
+                                                        <div className="progress-track-lg">
+                                                            <div className="progress-fill-accent" style={{ width: `${prog.percentContribuicao}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                         <span className={`connection-pill ${online ? "" : "connection-pill-off"}`}>
                                             {online ? "online" : "offline"}
                                         </span>
