@@ -437,7 +437,7 @@ function Dashboard() {
             .select("uploaded_by, status")
             .not("uploaded_by", "is", null);
 
-        const { data: totalAulasCurso } = await supabase
+        const { count: totalAulas } = await supabase
             .from("lessons")
             .select("id", { count: "exact", head: true });
 
@@ -446,7 +446,8 @@ function Dashboard() {
             .select("person_id, status")
             .eq("status", "synced");
 
-        const totalAulas = totalAulasCurso?.length ?? 0;
+        const totalAulasCount = totalAulas ?? 0;
+        const totalContribuicoes = (contribuicoes || []).length;
 
         const progressoPorPessoa = {};
         (profiles || []).forEach((p) => {
@@ -454,11 +455,10 @@ function Dashboard() {
                 (a) => a.uploaded_by === p.id && a.status === "completed"
             ).length;
             const contribuicoesPessoa = (contribuicoes || []).filter((c) => c.person_id === p.id).length;
-            const totalContribuicoes = (contribuicoes || []).length;
 
             progressoPorPessoa[p.id] = {
                 aulasConcluidas,
-                percentCurso: totalAulas > 0 ? Math.min(100, (aulasConcluidas / totalAulas) * 100) : 0,
+                percentCurso: totalAulasCount > 0 ? Math.min(100, (aulasConcluidas / totalAulasCount) * 100) : 0,
                 contribuicoesPessoa,
                 percentContribuicao: totalContribuicoes > 0 ? Math.min(100, (contribuicoesPessoa / totalContribuicoes) * 100) : 0,
             };
