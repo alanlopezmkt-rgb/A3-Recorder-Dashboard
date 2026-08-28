@@ -113,9 +113,12 @@ function buildContext(files) {
 const VOICE_STYLE_RULE =
     "Sua resposta vai ser lida em voz alta por um sistema de texto-para-fala, então escreva em texto corrido, sem markdown (nada de **negrito**, listas com - ou *, títulos com #), sem emojis e sem símbolos especiais. Só frases naturais, como se estivesse falando.";
 
+const SOURCE_TYPE_RULE =
+    "Alguns arquivos do contexto são DOCUMENTAÇÃO (descrevem como o sistema/pipeline FOI PROJETADO para funcionar — arquivos com nomes como 'Pipeline-...', 'Guia-do-Sistema', 'Sistema-Dashboard-...') e outros são CONTEÚDO REAL (aulas/transcrições de fato existentes). Nunca confunda os dois: se a pergunta for sobre o que existe na base HOJE (quantas aulas, o que já foi transcrito, o que tem em tal pasta), responda com base só no conteúdo REAL, e diga explicitamente se só encontrou documentação explicando o funcionamento, deixando claro que isso não significa que já existe conteúdo gerado. Nunca apresente a descrição de como o pipeline funciona como se fosse uma lista de aulas/conteúdo que já existe.";
+
 async function askOpenRouter(question, context) {
     const systemPrompt = context
-        ? `Você é um assistente que responde perguntas usando APENAS o conteúdo da base de conhecimento fornecida abaixo. Se a resposta não estiver no conteúdo, diga claramente que não encontrou isso na base — nunca invente informação. ${VOICE_STYLE_RULE}\n\n${context}`
+        ? `Você é um assistente que responde perguntas usando APENAS o conteúdo da base de conhecimento fornecida abaixo. Se a resposta não estiver no conteúdo, diga claramente que não encontrou isso na base — nunca invente informação. ${SOURCE_TYPE_RULE} ${VOICE_STYLE_RULE}\n\n${context}`
         : `Você é um assistente de uma base de conhecimento pessoal, mas nenhum arquivo relevante foi encontrado para essa pergunta. Diga isso claramente ao usuário em vez de inventar uma resposta. ${VOICE_STYLE_RULE}`;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
