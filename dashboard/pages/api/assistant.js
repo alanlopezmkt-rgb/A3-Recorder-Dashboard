@@ -1,7 +1,13 @@
 const fs = require("fs");
 const path = require("path");
 
-const VAULT_DIR = process.env.ASSISTANT_VAULT_DIR || "";
+// Lista de pastas separadas por ";" — dá pra apontar o assistente pra várias
+// vaults ao mesmo tempo (ex: A3-Central + Alan-Knowledge + as dos sócios).
+// Mantém compatibilidade com a variável antiga (ASSISTANT_VAULT_DIR).
+const VAULT_DIRS = (process.env.ASSISTANT_VAULT_DIRS || process.env.ASSISTANT_VAULT_DIR || "")
+    .split(";")
+    .map((p) => p.trim())
+    .filter(Boolean);
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "anthropic/claude-haiku-4.5";
 const MAX_CONTEXT_CHARS = 12000;
@@ -48,17 +54,23 @@ function listMarkdownFiles(dir) {
 }
 
 function buildIndex() {
-    return listMarkdownFiles(VAULT_DIR).map((filePath) => {
-        const raw = fs.readFileSync(filePath, "utf8");
-        const { frontmatter, body } = parseFrontmatter(raw);
-        return {
-            filePath,
-            title: frontmatter.title || path.basename(filePath),
-            curso: frontmatter.curso || "",
-            modulo: frontmatter.modulo || "",
-            body,
-        };
-    });
+    const entries = [];
+    for (const vaultDir of VAULT_DIRS) {
+        const vaultName = path.basename(vaultDir);
+        for (const filePath of listMarkdownFiles(vaultDir)) {
+            const raw = fs.readFileSync(filePath, "utf8");
+            const { frontmatter, body } = parseFrontmatter(raw);
+            entries.push({
+                filePath,
+                vault: vaultName,
+                title: frontmatter.title || path.basename(filePath),
+                curso: frontmatter.curso || "",
+                modulo: frontmatter.modulo || "",
+                body,
+            });
+        }
+    }
+    return entries;
 }
 
 function normalizeWords(text) {
@@ -91,7 +103,7 @@ function pickRelevantFiles(index, question) {
 function buildContext(files) {
     let context = "";
     for (const file of files) {
-        const chunk = `## ${file.title} (${file.curso} / ${file.modulo})\n${file.body.trim()}\n\n`;
+        const chunk = `## ${file.title} (${file.curso} / ${file.modulo} — fonte: ${file.vault})\n${file.body.trim()}\n\n`;
         if (context.length + chunk.length > MAX_CONTEXT_CHARS) break;
         context += chunk;
     }
@@ -148,8 +160,8 @@ export default async function handler(req, res) {
         return;
     }
 
-    if (!VAULT_DIR) {
-        res.status(500).json({ error: "ASSISTANT_VAULT_DIR não configurado no servidor." });
+    if (VAULT_DIRS.length === 0) {
+        res.status(500).json({ error: "ASSISTANT_VAULT_DIRS (ou ASSISTANT_VAULT_DIR) não configurado no servidor." });
         return;
     }
 
@@ -162,7 +174,7 @@ export default async function handler(req, res) {
 
         res.status(200).json({
             answer,
-            sources: relevantFiles.map((f) => ({ title: f.title, curso: f.curso, modulo: f.modulo })),
+            sources: relevantFiles.map((f) => ({ title: f.title, curso: f.curso, modulo: f.modulo, vault: f.vault })),
         });
     } catch (error) {
         res.status(500).json({ error: error.message || "Erro desconhecido ao consultar o assistente." });

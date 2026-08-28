@@ -162,7 +162,7 @@ export default function Assistente() {
                     <ul>
                         {fontes.map((fonte, i) => (
                             <li key={i}>
-                                {fonte.title} — {fonte.curso} / {fonte.modulo}
+                                {fonte.title} — {fonte.curso} / {fonte.modulo} ({fonte.vault})
                             </li>
                         ))}
                     </ul>
