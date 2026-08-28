@@ -10,6 +10,19 @@ const ELEVENLABS_MODEL = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2
 
 const EDGE_TTS_VOICE = process.env.EDGE_TTS_VOICE || "pt-BR-AntonioNeural";
 
+// Remove markdown, emojis e outros símbolos que o TTS acabaria lendo em voz alta
+// (ex: "asterisco", nome de emoji) caso o modelo escape alguma formatação.
+function sanitizeForSpeech(text) {
+    return text
+        .replace(/```[\s\S]*?```/g, " ") // blocos de código
+        .replace(/[*_~`#>]/g, "") // marcações markdown comuns
+        .replace(/^\s*[-•]\s+/gm, "") // marcadores de lista
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links [texto](url) -> texto
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu, "") // emojis e símbolos
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
 async function speakWithElevenLabs(text) {
     if (!ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
         throw new Error("ELEVENLABS_API_KEY ou ELEVENLABS_VOICE_ID não configurados no servidor.");
@@ -71,9 +84,15 @@ export default async function handler(req, res) {
         return;
     }
 
+    const cleanText = sanitizeForSpeech(text);
+    if (!cleanText) {
+        res.status(400).json({ error: "Texto vazio após limpeza" });
+        return;
+    }
+
     try {
         const { buffer, contentType } =
-            TTS_PROVIDER === "elevenlabs" ? await speakWithElevenLabs(text) : await speakWithEdgeTts(text);
+            TTS_PROVIDER === "elevenlabs" ? await speakWithElevenLabs(cleanText) : await speakWithEdgeTts(cleanText);
 
         res.setHeader("Content-Type", contentType);
         res.status(200).send(buffer);

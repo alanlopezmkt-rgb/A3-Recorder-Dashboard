@@ -98,10 +98,13 @@ function buildContext(files) {
     return context;
 }
 
+const VOICE_STYLE_RULE =
+    "Sua resposta vai ser lida em voz alta por um sistema de texto-para-fala, então escreva em texto corrido, sem markdown (nada de **negrito**, listas com - ou *, títulos com #), sem emojis e sem símbolos especiais. Só frases naturais, como se estivesse falando.";
+
 async function askOpenRouter(question, context) {
     const systemPrompt = context
-        ? `Você é um assistente que responde perguntas usando APENAS o conteúdo da base de conhecimento fornecida abaixo. Se a resposta não estiver no conteúdo, diga claramente que não encontrou isso na base — nunca invente informação.\n\n${context}`
-        : "Você é um assistente de uma base de conhecimento pessoal, mas nenhum arquivo relevante foi encontrado para essa pergunta. Diga isso claramente ao usuário em vez de inventar uma resposta.";
+        ? `Você é um assistente que responde perguntas usando APENAS o conteúdo da base de conhecimento fornecida abaixo. Se a resposta não estiver no conteúdo, diga claramente que não encontrou isso na base — nunca invente informação. ${VOICE_STYLE_RULE}\n\n${context}`
+        : `Você é um assistente de uma base de conhecimento pessoal, mas nenhum arquivo relevante foi encontrado para essa pergunta. Diga isso claramente ao usuário em vez de inventar uma resposta. ${VOICE_STYLE_RULE}`;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
