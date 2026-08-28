@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase, ADMIN_EMAIL, REMEMBER_ME_KEY } from "../lib/supabaseClient";
+import Assistente from "../components/Assistente";
 
 export default function Home() {
     const [session, setSession] = useState(undefined);
@@ -146,6 +147,17 @@ function IconGear() {
         <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" />
+        </svg>
+    );
+}
+
+function IconMic() {
+    return (
+        <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
         </svg>
     );
 }
@@ -1158,7 +1170,7 @@ function Dashboard() {
                     {!sidebarCollapsed && <div className="sidebar-section-label">Operação</div>}
 
                     <button
-                        className={`sidebar-item ${!["progresso", "notificacoes", "extensao", "configuracoes"].includes(view) ? "active" : ""}`}
+                        className={`sidebar-item ${!["progresso", "notificacoes", "extensao", "configuracoes", "assistente"].includes(view) ? "active" : ""}`}
                         title="Dashboard"
                         onClick={() => { setView("files"); setStatusFilter("all"); }}
                     >
@@ -1203,6 +1215,15 @@ function Dashboard() {
                     >
                         <IconGear />
                         {!sidebarCollapsed && <span>Configurações</span>}
+                    </button>
+
+                    <button
+                        className={`sidebar-item ${view === "assistente" ? "active" : ""}`}
+                        title="Assistente"
+                        onClick={() => setView("assistente")}
+                    >
+                        <IconMic />
+                        {!sidebarCollapsed && <span>Assistente</span>}
                     </button>
 
                     {!sidebarCollapsed && <div className="sidebar-section-label">Visão geral</div>}
@@ -1325,7 +1346,9 @@ function Dashboard() {
                                         ? "Extensão"
                                         : view === "configuracoes"
                                             ? "Configurações"
-                                            : "Painel do Transcritor"}
+                                            : view === "assistente"
+                                                ? "Assistente"
+                                                : "Painel do Transcritor"}
                     </h1>
                     <div className="subtitle" style={{ marginBottom: 0 }}>
                         {view === "usuarios"
@@ -1338,9 +1361,13 @@ function Dashboard() {
                                         ? "Baixe a extensão e compartilhe com seus amigos"
                                         : view === "configuracoes"
                                             ? "Ajustes gerais do painel e da transcrição"
-                                            : "Áudios enviados pela extensão e status da transcrição"}
+                                            : view === "assistente"
+                                                ? "Pergunte por voz sobre o que já foi transcrito"
+                                                : "Áudios enviados pela extensão e status da transcrição"}
                     </div>
                 </div>
+
+                {view === "assistente" && <Assistente />}
 
                 {view === "progresso" && (
                     <>
