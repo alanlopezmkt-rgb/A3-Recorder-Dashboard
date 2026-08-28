@@ -103,9 +103,17 @@ function pickRelevantFiles(index, question) {
 function buildContext(files) {
     let context = "";
     for (const file of files) {
-        const chunk = `## ${file.title} (${file.curso} / ${file.modulo} — fonte: ${file.vault})\n${file.body.trim()}\n\n`;
-        if (context.length + chunk.length > MAX_CONTEXT_CHARS) break;
+        const remaining = MAX_CONTEXT_CHARS - context.length;
+        if (remaining <= 200) break; // não sobra espaço útil, para por aqui
+
+        const header = `## ${file.title} (${file.curso} / ${file.modulo} — fonte: ${file.vault})\n`;
+        const bodyBudget = remaining - header.length - 20; // folga pro "\n\n[...trecho cortado]\n\n"
+        const body = file.body.trim();
+        const truncated = body.length > bodyBudget;
+        const chunk = `${header}${body.slice(0, Math.max(bodyBudget, 0))}${truncated ? "\n[...trecho cortado por limite de tamanho...]" : ""}\n\n`;
+
         context += chunk;
+        if (truncated) break; // já preenchemos o espaço disponível
     }
     return context;
 }
@@ -114,7 +122,7 @@ const VOICE_STYLE_RULE =
     "Sua resposta vai ser lida em voz alta por um sistema de texto-para-fala, então escreva em texto corrido, sem markdown (nada de **negrito**, listas com - ou *, títulos com #), sem emojis e sem símbolos especiais. Só frases naturais, como se estivesse falando.";
 
 const SOURCE_TYPE_RULE =
-    "Alguns arquivos do contexto são DOCUMENTAÇÃO (descrevem como o sistema/pipeline FOI PROJETADO para funcionar — arquivos com nomes como 'Pipeline-...', 'Guia-do-Sistema', 'Sistema-Dashboard-...') e outros são CONTEÚDO REAL (aulas/transcrições de fato existentes). Nunca confunda os dois: se a pergunta for sobre o que existe na base HOJE (quantas aulas, o que já foi transcrito, o que tem em tal pasta), responda com base só no conteúdo REAL, e diga explicitamente se só encontrou documentação explicando o funcionamento, deixando claro que isso não significa que já existe conteúdo gerado. Nunca apresente a descrição de como o pipeline funciona como se fosse uma lista de aulas/conteúdo que já existe.";
+    "Alguns arquivos do contexto são DOCUMENTAÇÃO (descrevem como o sistema/pipeline FOI PROJETADO para funcionar — arquivos com nomes como 'Pipeline-...', 'Guia-do-Sistema', 'Sistema-Dashboard-...') e outros são CONTEÚDO REAL (aulas/transcrições de fato existentes). Para perguntas sobre COMO O SISTEMA FUNCIONA (o que é a dashboard, como funciona a extensão, como o transcritor processa um áudio, etc.), use normalmente o conteúdo da documentação — ela é a fonte certa pra esse tipo de pergunta, responda com todos os detalhes que ela trouxer. Só tenha cuidado especificamente quando a pergunta for sobre o que já existe/foi processado HOJE na base (quantas aulas, quais cursos já têm conteúdo, o que tem dentro de tal pasta agora): nesse caso específico, não apresente os exemplos citados na documentação (que descrevem o pipeline em abstrato) como se fossem um inventário real do que já foi gerado — deixe claro que a documentação explica o funcionamento, mas não é uma lista do conteúdo atualmente presente.";
 
 async function askOpenRouter(question, context) {
     const systemPrompt = context
