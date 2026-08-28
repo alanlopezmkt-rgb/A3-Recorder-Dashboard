@@ -82,12 +82,28 @@ export default function Assistente() {
         }
     }
 
-    function falar(texto) {
-        if (!window.speechSynthesis || !texto) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(texto);
-        utterance.lang = "pt-BR";
-        window.speechSynthesis.speak(utterance);
+    async function falar(texto) {
+        if (!texto) return;
+        try {
+            const response = await fetch("/api/speak", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: texto }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Falha ao gerar áudio da resposta.");
+            }
+
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.onended = () => URL.revokeObjectURL(audioUrl);
+            audio.play();
+        } catch (error) {
+            // Se a voz falhar, a resposta em texto já está na tela — não bloqueia o uso.
+            setErro((prev) => prev || `Voz indisponível: ${error.message}`);
+        }
     }
 
     if (!suportado) {
