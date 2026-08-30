@@ -207,15 +207,6 @@ function IconRefresh() {
     );
 }
 
-function IconEye() {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
-            <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z" />
-            <circle cx="12" cy="12" r="3" />
-        </svg>
-    );
-}
-
 function IconAudio() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="17" height="17">
@@ -392,6 +383,10 @@ function Dashboard() {
     const [passwordSavedMsg, setPasswordSavedMsg] = useState("");
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deletePasswordInput, setDeletePasswordInput] = useState("");
+    const [apagarDaVault, setApagarDaVault] = useState(true);
+    const [vaultDeleteWarning, setVaultDeleteWarning] = useState("");
+    const [selectedJobIds, setSelectedJobIds] = useState([]);
+    const [transcrevendoLote, setTranscrevendoLote] = useState(false);
     const [deleteError, setDeleteError] = useState("");
     const [deleting, setDeleting] = useState(false);
     const [detailsTarget, setDetailsTarget] = useState(null);
@@ -412,8 +407,27 @@ function Dashboard() {
     const prevJobStatusRef = useRef(null);
     const notifPrefsRef = useRef(notifPrefs);
     notifPrefsRef.current = notifPrefs;
+    // Vários eventos realtime (profiles, app_settings, transcription_jobs, etc.)
+    // mais o polling de 500ms podiam disparar carregar() concorrentemente.
+    // Como carregar() faz vários awaits em sequência, uma chamada mais antiga
+    // podia terminar depois de uma mais nova e sobrescrever o estado com dado
+    // desatualizado (ex.: o switch de um perfil "voltando sozinho" logo após
+    // o clique). Este lock garante que só uma chamada roda por vez; chamadas
+    // que chegam enquanto outra já está em andamento são ignoradas — o
+    // próximo evento ou o próximo ciclo do polling já refaz a leitura.
+    const carregandoRef = useRef(false);
 
     async function carregar() {
+        if (carregandoRef.current) return;
+        carregandoRef.current = true;
+        try {
+            await carregarImpl();
+        } finally {
+            carregandoRef.current = false;
+        }
+    }
+
+    async function carregarImpl() {
         const { data: settings } = await supabase
             .from("app_settings")
             .select("auto_transcribe, delete_password_hash")
@@ -436,7 +450,7 @@ function Dashboard() {
 
         const { data: profiles } = await supabase
             .from("profiles")
-            .select("id, display_name, last_seen")
+            .select("id, display_name, last_seen, auto_transcribe")
             .order("display_name", { ascending: true });
 
         const { data: userData } = await supabase.auth.getUser();
@@ -901,15 +915,52 @@ function Dashboard() {
             .eq("id", true);
     }
 
-    async function transcreverAgora(jobId) {
-        setBusyIds((prev) => ({ ...prev, [jobId]: true }));
+    async function alternarAutoPerfil(usuario) {
+        const novoValor = !usuario.auto_transcribe;
 
+        setUsuarios((prev) =>
+            prev.map((u) => (u.id === usuario.id ? { ...u, auto_transcribe: novoValor } : u))
+        );
+
+        // O RLS de profiles só deixa cada usuário mexer no próprio registro,
+        // então essa escrita (o admin mudando o toggle de outra pessoa) tem
+        // que passar pela API route com service role — direto pelo cliente
+        // do navegador ela é silenciosamente ignorada.
+        const resp = await fetch("/api/set-profile-auto-transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profileId: usuario.id, autoTranscribe: novoValor }),
+        });
+
+        if (!resp.ok) {
+            // Reverte o otimista se a escrita falhou de verdade.
+            setUsuarios((prev) =>
+                prev.map((u) => (u.id === usuario.id ? { ...u, auto_transcribe: usuario.auto_transcribe } : u))
+            );
+        }
+    }
+
+    function alternarSelecaoJob(jobId) {
+        setSelectedJobIds((prev) =>
+            prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]
+        );
+    }
+
+    async function transcreverSelecionados() {
+        if (selectedJobIds.length === 0) return;
+
+        setTranscrevendoLote(true);
+
+        // O worker (Transcritor Local) já processa um job por vez sozinho e
+        // encadeia pro próximo pendente automaticamente — só precisamos marcar
+        // todos os selecionados de uma vez, sem precisar clicar um por um.
         await supabase
             .from("transcription_jobs")
             .update({ manual_requested: true })
-            .eq("id", jobId);
+            .in("id", selectedJobIds);
 
-        setBusyIds((prev) => ({ ...prev, [jobId]: false }));
+        setSelectedJobIds([]);
+        setTranscrevendoLote(false);
     }
 
     function copiarTexto(texto) {
@@ -1014,6 +1065,8 @@ function Dashboard() {
         setDeleteTarget(row);
         setDeletePasswordInput("");
         setDeleteError("");
+        setApagarDaVault(true);
+        setVaultDeleteWarning("");
     }
 
     async function confirmarExclusao() {
@@ -1043,6 +1096,31 @@ function Dashboard() {
         }
 
         try {
+            if (apagarDaVault) {
+                try {
+                    const response = await fetch("/api/delete-vault-file", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            pessoa: deleteTarget.profiles?.display_name,
+                            curso: deleteTarget.courses?.name,
+                            modulo: deleteTarget.modules?.name,
+                            aula: deleteTarget.lessons?.lesson_number,
+                            titulo: deleteTarget.lessons?.title,
+                        }),
+                    });
+                    const data = await response.json();
+                    const aviso = !response.ok ? data.error || "Erro ao apagar da vault." : data.warning || (data.deleted === false ? data.message : "");
+                    if (aviso) {
+                        setVaultDeleteWarning(aviso);
+                        setTimeout(() => setVaultDeleteWarning(""), 8000);
+                    }
+                } catch (vaultError) {
+                    setVaultDeleteWarning(`Não consegui apagar da vault: ${vaultError.message}`);
+                    setTimeout(() => setVaultDeleteWarning(""), 8000);
+                }
+            }
+
             await supabase.from("transcriptions").delete().eq("audio_file_id", deleteTarget.id);
             await supabase.from("transcription_jobs").delete().eq("audio_file_id", deleteTarget.id);
 
@@ -1622,7 +1700,7 @@ function Dashboard() {
                     <div className="card">
                         <div className="section-title">Transcrição</div>
                         <div className="settings-row">
-                            <span>Transcrição automática</span>
+                            <span>Transcrição automática geral</span>
                             <div
                                 className="switch"
                                 data-on={autoTranscribe}
@@ -1630,6 +1708,29 @@ function Dashboard() {
                             >
                                 <div className="switch-dot" />
                             </div>
+                        </div>
+
+                        <div style={{ marginTop: 8, marginLeft: 12 }}>
+                            {usuarios.map((usuario) => (
+                                <div
+                                    key={usuario.id}
+                                    className="settings-row"
+                                    style={{ opacity: autoTranscribe ? 0.5 : 1 }}
+                                >
+                                    <span>{usuario.display_name}</span>
+                                    <div
+                                        className="switch"
+                                        data-on={autoTranscribe || usuario.auto_transcribe}
+                                        onClick={() => {
+                                            if (autoTranscribe) return;
+                                            alternarAutoPerfil(usuario);
+                                        }}
+                                        style={{ cursor: autoTranscribe ? "not-allowed" : "pointer" }}
+                                    >
+                                        <div className="switch-dot" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="section-title" style={{ marginTop: 24 }}>Tema</div>
@@ -1803,6 +1904,22 @@ function Dashboard() {
                 </div>
 
             <div className="card list-view">
+                {selectedJobIds.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <button
+                            className="btn-primary"
+                            disabled={transcrevendoLote}
+                            onClick={transcreverSelecionados}
+                        >
+                            {transcrevendoLote
+                                ? "Marcando..."
+                                : `Transcrever selecionados (${selectedJobIds.length})`}
+                        </button>
+                        <button className="btn-secondary" onClick={() => setSelectedJobIds([])}>
+                            Limpar seleção
+                        </button>
+                    </div>
+                )}
                 {loading ? (
                     <div className="empty">Carregando...</div>
                 ) : rowsFiltradas.length === 0 ? (
@@ -1813,15 +1930,32 @@ function Dashboard() {
 
                         return (
                             <div className="list-row" key={row.id}>
+                                {job && job.status === "pending" && !job.manual_requested && !autoTranscribe && (
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedJobIds.includes(job.id)}
+                                        onChange={() => alternarSelecaoJob(job.id)}
+                                        title="Selecionar para transcrever em lote"
+                                        style={{ marginRight: 4 }}
+                                    />
+                                )}
                                 <div className="list-row-icon">
                                     <IconAudio />
                                 </div>
 
                                 <div className="list-row-main">
                                     <span
-                                        className="filename-link list-row-title"
+                                        className={
+                                            row.transcription_jobs?.[0]?.status === "completed"
+                                                ? "filename-link list-row-title"
+                                                : "list-row-title"
+                                        }
                                         title={row.filename}
-                                        onClick={() => window.open(`/transcricao/${row.id}`, "_blank")}
+                                        onClick={() => {
+                                            if (row.transcription_jobs?.[0]?.status === "completed") {
+                                                window.open(`/transcricao/${row.id}`, "_blank");
+                                            }
+                                        }}
                                     >
                                         {nomeExibicao(row.filename)}
                                     </span>
@@ -1898,14 +2032,11 @@ function Dashboard() {
                                 </div>
 
                                 <div className="list-row-actions">
-                                    {job && job.status === "pending" && (
-                                        <button
-                                            className="btn-small"
-                                            disabled={autoTranscribe || job.manual_requested || busyIds[job.id]}
-                                            onClick={() => transcreverAgora(job.id)}
-                                        >
-                                            {job.manual_requested ? "Na fila" : "Transcrever agora"}
-                                        </button>
+                                    {/* Botão individual removido: a seleção por checkbox + o botão
+                                        "Transcrever selecionados" no topo já cobre esse caso, um por
+                                        um ou vários de uma vez. Só mantemos o indicador de fila. */}
+                                    {job && job.status === "pending" && job.manual_requested && (
+                                        <span className="badge badge-pending">Na fila</span>
                                     )}
                                     {job && job.status === "processing" && (
                                         <button
@@ -1942,13 +2073,6 @@ function Dashboard() {
                                         }}
                                     >
                                         <IconInfo />
-                                    </button>
-                                    <button
-                                        className="icon-btn"
-                                        title="Abrir transcrição"
-                                        onClick={() => window.open(`/transcricao/${row.id}`, "_blank")}
-                                    >
-                                        <IconEye />
                                     </button>
                                     <button
                                         className="icon-btn icon-btn-danger"
@@ -2096,7 +2220,7 @@ function Dashboard() {
                         <h1 style={{ fontSize: 16 }}>Excluir arquivo</h1>
                         <div className="subtitle">
                             Isso vai apagar permanentemente <strong>{deleteTarget.filename}</strong>,
-                            sua transcrição e o job associado. Digite a senha de exclusão para confirmar.
+                            sua transcrição e o job associado do banco de dados. Digite a senha de exclusão para confirmar.
                         </div>
 
                         {deleteError && <div className="error-text">{deleteError}</div>}
@@ -2108,6 +2232,16 @@ function Dashboard() {
                             onChange={(e) => setDeletePasswordInput(e.target.value)}
                             autoFocus
                         />
+
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13 }}>
+                            <input
+                                type="checkbox"
+                                checked={apagarDaVault}
+                                onChange={(e) => setApagarDaVault(e.target.checked)}
+                            />
+                            Também apagar o arquivo (.md) da vault de{" "}
+                            {deleteTarget.profiles?.display_name || "(pessoa desconhecida)"}
+                        </label>
 
                         <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                             <button
@@ -2128,6 +2262,12 @@ function Dashboard() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {vaultDeleteWarning && (
+                <div className="error-text" style={{ position: "fixed", bottom: 20, right: 20, maxWidth: 360, zIndex: 50 }}>
+                    {vaultDeleteWarning}
                 </div>
             )}
         </div>

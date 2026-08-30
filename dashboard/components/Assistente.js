@@ -13,7 +13,13 @@ export default function Assistente() {
     const [fontes, setFontes] = useState([]);
     const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState("");
+    const [acaoPendente, setAcaoPendente] = useState(null);
     const recognitionRef = useRef(null);
+    const acaoPendenteRef = useRef(null);
+
+    useEffect(() => {
+        acaoPendenteRef.current = acaoPendente;
+    }, [acaoPendente]);
 
     useEffect(() => {
         const SpeechRecognition = getSpeechRecognition();
@@ -30,7 +36,11 @@ export default function Assistente() {
         recognition.onresult = (event) => {
             const texto = event.results[0][0].transcript;
             setPergunta(texto);
-            perguntar(texto);
+            if (acaoPendenteRef.current) {
+                responderConfirmacao(texto);
+            } else {
+                perguntar(texto);
+            }
         };
 
         recognition.onerror = (event) => {
@@ -70,6 +80,47 @@ export default function Assistente() {
 
             if (!response.ok) {
                 throw new Error(data.error || "Erro ao consultar o assistente.");
+            }
+
+            setResposta(data.answer);
+            setFontes(data.sources || []);
+            setAcaoPendente(data.pendingAction || null);
+            falar(data.answer);
+        } catch (error) {
+            setErro(error.message);
+        } finally {
+            setCarregando(false);
+        }
+    }
+
+    function ehConfirmacaoPositiva(texto) {
+        const t = texto.toLowerCase();
+        return /\b(sim|confirmo|confirma|pode|isso mesmo|correto|manda|manda ver|vai)\b/.test(t);
+    }
+
+    async function responderConfirmacao(texto) {
+        const acao = acaoPendenteRef.current;
+        setAcaoPendente(null);
+
+        if (!ehConfirmacaoPositiva(texto)) {
+            const resposta = "Ok, cancelei essa ação.";
+            setResposta(resposta);
+            falar(resposta);
+            return;
+        }
+
+        setCarregando(true);
+        setErro("");
+        try {
+            const response = await fetch("/api/assistant", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ confirmAction: acao }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Erro ao executar a ação.");
             }
 
             setResposta(data.answer);
@@ -121,7 +172,7 @@ export default function Assistente() {
 
     return (
         <div className="card">
-            <div className="section-title">Assistente de voz — Alan-Knowledge</div>
+            <div className="section-title">Assistente de voz — Zoio-Knowledge</div>
             <p className="subtitle" style={{ marginTop: 0 }}>
                 Pergunte sobre o conteúdo já transcrito na sua base pessoal. O
                 assistente responde só com base no que já está na sua vault.
@@ -133,8 +184,20 @@ export default function Assistente() {
                 disabled={ouvindo || carregando}
                 title="Falar pergunta"
             >
-                {ouvindo ? "🎙️ Ouvindo..." : carregando ? "Pensando..." : "🎤 Perguntar"}
+                {ouvindo
+                    ? "🎙️ Ouvindo..."
+                    : carregando
+                    ? "Pensando..."
+                    : acaoPendente
+                    ? "🎤 Confirmar (diga sim ou não)"
+                    : "🎤 Perguntar"}
             </button>
+
+            {acaoPendente && (
+                <p className="subtitle" style={{ marginTop: 8 }}>
+                    Aguardando sua confirmação em voz para executar a ação.
+                </p>
+            )}
 
             {pergunta && (
                 <div style={{ marginTop: 16 }}>
