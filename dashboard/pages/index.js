@@ -364,6 +364,9 @@ function Dashboard() {
     const [worker, setWorker] = useState(null);
     const [now, setNow] = useState(Date.now());
     const [theme, setTheme] = useState("dark");
+    // window.a3os só existe dentro do app desktop (preload.js do Electron) —
+    // no navegador comum essas opções nem aparecem.
+    const [autostart, setAutostart] = useState({ supported: false, enabled: false });
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [statusFilter, setStatusFilter] = useState("all");
     const [view, setView] = useState("files");
@@ -688,6 +691,18 @@ function Dashboard() {
         setTheme(novo);
         document.documentElement.setAttribute("data-theme", novo);
         localStorage.setItem("dashboard-theme", novo);
+    }
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && window.a3os) {
+            window.a3os.getAutostart().then(setAutostart);
+        }
+    }, []);
+
+    async function alternarAutostart() {
+        if (!window.a3os) return;
+        const novoEstado = await window.a3os.setAutostart(!autostart.enabled);
+        setAutostart(novoEstado);
     }
 
     useEffect(() => {
@@ -1750,6 +1765,22 @@ function Dashboard() {
                                 Claro
                             </div>
                         </div>
+
+                        {autostart.supported && (
+                            <>
+                                <div className="section-title" style={{ marginTop: 24 }}>Aplicativo</div>
+                                <div className="settings-row">
+                                    <span>Iniciar com o Windows (minimizado na bandeja)</span>
+                                    <div
+                                        className="switch"
+                                        data-on={autostart.enabled}
+                                        onClick={alternarAutostart}
+                                    >
+                                        <div className="switch-dot" />
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <div className="section-title" style={{ marginTop: 24 }}>Segurança</div>
                         <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>

@@ -1,15 +1,21 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, session } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, session, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const { spawn } = require("child_process");
 
 const PORT = 4173;
+// Marca colocada em app.setLoginItemSettings({ args: [...] }) — é assim que
+// sabemos, ao iniciar via Windows, que fomos abertos automaticamente no
+// login (e não por um duplo-clique manual do usuário), pra decidir se a
+// janela some ficando só o ícone na bandeja.
+const START_MINIMIZED_FLAG = "--start-minimized";
 
 let mainWindow = null;
 let tray = null;
 let serverProcess = null;
 let isQuitting = false;
+const startMinimized = process.argv.includes(START_MINIMIZED_FLAG);
 
 const logFilePath = path.join(app.getPath("userData"), "main.log");
 
@@ -142,13 +148,18 @@ function createWindow() {
         icon: getIconPath(),
         backgroundColor: "#0b0b16",
         autoHideMenuBar: true,
+        // Se fomos abertos automaticamente pelo login do Windows com a opção
+        // "iniciar minimizado" ligada, a janela nasce escondida — só o ícone
+        // na bandeja aparece. O usuário abre clicando no tray.
+        show: !startMinimized,
         webPreferences: {
             contextIsolation: true,
             nodeIntegration: false,
+            preload: path.join(__dirname, "preload.js"),
         },
     });
 
-    log("Carregando janela em", `http://127.0.0.1:${PORT}`);
+    log("Carregando janela em", `http://127.0.0.1:${PORT}`, "startMinimized:", startMinimized);
     mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
 
     mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
@@ -215,6 +226,31 @@ function createTray() {
         mainWindow.focus();
     });
 }
+
+function getAutostartState() {
+    // No Windows, isPackaged=false roda via "electron ." (dev), e
+    // setLoginItemSettings não funciona bem nesse modo — só faz sentido no
+    // app empacotado (instalado de verdade).
+    if (!app.isPackaged) {
+        return { supported: false, enabled: false };
+    }
+    const settings = app.getLoginItemSettings({ args: [START_MINIMIZED_FLAG] });
+    return { supported: true, enabled: settings.openAtLogin };
+}
+
+function setAutostartState(enabled) {
+    if (!app.isPackaged) {
+        return getAutostartState();
+    }
+    app.setLoginItemSettings({
+        openAtLogin: enabled,
+        args: [START_MINIMIZED_FLAG],
+    });
+    return getAutostartState();
+}
+
+ipcMain.handle("a3os:get-autostart", () => getAutostartState());
+ipcMain.handle("a3os:set-autostart", (_event, enabled) => setAutostartState(Boolean(enabled)));
 
 if (singleInstanceLock) {
     app.on("second-instance", () => {
