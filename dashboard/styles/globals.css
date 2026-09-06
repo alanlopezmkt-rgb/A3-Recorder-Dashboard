@@ -660,7 +660,7 @@ button:active {
     font-size: 12.5px;
     color: var(--text-faint);
     flex-shrink: 0;
-    max-width: 45%;
+    max-width: 40%;
 }
 
 .details-value {
@@ -669,7 +669,9 @@ button:active {
     color: var(--text);
     text-align: right;
     min-width: 0;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
 }
 
 .audio-player-wrap {
