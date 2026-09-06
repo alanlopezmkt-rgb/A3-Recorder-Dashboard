@@ -754,9 +754,38 @@ function Dashboard() {
         new Notification(titulo, { body: corpo, icon: "/icon-a3.png" });
     }
 
+    const CONECTIVOS_MINUSCULOS = new Set(["e", "de", "da", "do", "das", "dos", "a", "o", "em", "com", "para", "no", "na"]);
+
     function nomeExibicao(filename) {
         if (!filename) return "";
-        return filename.replace(/_(\d{10,})(\.[a-zA-Z0-9]+)$/, "$2").replace(/_/g, " ");
+        const semSufixo = filename.replace(/_(\d{10,})(\.[a-zA-Z0-9]+)$/, "$2").replace(/_/g, " ");
+
+        // Separa a extensão antes de mexer no case, senão ".WEBM" também
+        // entraria na normalização e viraria ".Webm".
+        const extensaoMatch = semSufixo.match(/(\.[a-zA-Z0-9]+)$/);
+        const extensao = extensaoMatch ? extensaoMatch[1] : "";
+        const nomeBase = extensao ? semSufixo.slice(0, -extensao.length) : semSufixo;
+
+        // Alguns cursos (ex: da plataforma do Bigode) vêm com o título todo em
+        // CAIXA ALTA, diferente dos outros (ex: Zoio), que já chegam em
+        // Title Case. Detecta "gritado" (maioria das letras maiúsculas) e
+        // normaliza pra Title Case, deixando os que já vêm formatados intactos.
+        const letras = nomeBase.replace(/[^a-zA-ZÀ-ÿ]/g, "");
+        const maiusculas = nomeBase.replace(/[^A-ZÀ-Ý]/g, "");
+        const gritado = letras.length > 3 && maiusculas.length / letras.length > 0.8;
+
+        if (!gritado) return semSufixo;
+
+        let primeira = true;
+        const nomeFormatado = nomeBase.replace(/[a-zA-ZÀ-ÿ]+/g, (palavra) => {
+            const minuscula = palavra.toLowerCase();
+            const ehConectivo = !primeira && CONECTIVOS_MINUSCULOS.has(minuscula);
+            primeira = false;
+            if (ehConectivo) return minuscula;
+            return palavra.charAt(0).toUpperCase() + minuscula.slice(1);
+        });
+
+        return nomeFormatado + extensao;
     }
 
     function formatarBytes(bytes) {
