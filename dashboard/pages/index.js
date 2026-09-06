@@ -371,6 +371,8 @@ function Dashboard() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [view, setView] = useState("files");
     const [usuarios, setUsuarios] = useState([]);
+    const [resumosPendentes, setResumosPendentes] = useState([]);
+    const [carregandoResumos, setCarregandoResumos] = useState(false);
     const [progressoPorPessoa, setProgressoPorPessoa] = useState({});
     const [progresso, setProgresso] = useState({
         totalLessons: 0,
@@ -607,6 +609,23 @@ function Dashboard() {
         return () => {
             supabase.removeChannel(channel);
         };
+    }, []);
+
+    async function carregarResumosPendentes() {
+        setCarregandoResumos(true);
+        try {
+            const resp = await fetch("/api/pending-summaries");
+            const data = await resp.json();
+            setResumosPendentes(data.pendentes || []);
+        } catch {
+            // Se a rota falhar (ex: pasta das vaults não acessível), só deixa a lista vazia.
+        } finally {
+            setCarregandoResumos(false);
+        }
+    }
+
+    useEffect(() => {
+        carregarResumosPendentes();
     }, []);
 
     useEffect(() => {
@@ -1319,6 +1338,18 @@ function Dashboard() {
                         {!sidebarCollapsed && <span>Assistente</span>}
                     </button>
 
+                    <button
+                        className={`sidebar-item ${view === "resumos" ? "active" : ""}`}
+                        title="Resumos pendentes"
+                        onClick={() => setView("resumos")}
+                    >
+                        <IconFolder />
+                        {!sidebarCollapsed && <span>Resumos pendentes</span>}
+                        {resumosPendentes.length > 0 && (
+                            <span className="sidebar-badge">{resumosPendentes.length}</span>
+                        )}
+                    </button>
+
                     {!sidebarCollapsed && <div className="sidebar-section-label">Visão geral</div>}
 
                     <div
@@ -1441,7 +1472,9 @@ function Dashboard() {
                                             ? "Configurações"
                                             : view === "assistente"
                                                 ? "Assistente"
-                                                : "Painel do Transcritor"}
+                                                : view === "resumos"
+                                                    ? "Resumos pendentes"
+                                                    : "Painel do Transcritor"}
                     </h1>
                     <div className="subtitle" style={{ marginBottom: 0 }}>
                         {view === "usuarios"
@@ -1456,11 +1489,53 @@ function Dashboard() {
                                             ? "Ajustes gerais do painel e da transcrição"
                                             : view === "assistente"
                                                 ? "Pergunte por voz sobre o que já foi transcrito"
-                                                : "Áudios enviados pela extensão e status da transcrição"}
+                                                : view === "resumos"
+                                                    ? "Aulas transcritas que ainda não têm um resumo detalhado"
+                                                    : "Áudios enviados pela extensão e status da transcrição"}
                     </div>
                 </div>
 
                 {view === "assistente" && <Assistente />}
+
+                {view === "resumos" && (
+                    <div className="card">
+                        <div className="section-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span>{resumosPendentes.length} pendente{resumosPendentes.length === 1 ? "" : "s"}</span>
+                            <button className="icon-btn" title="Atualizar" onClick={carregarResumosPendentes}>
+                                <IconRefresh />
+                            </button>
+                        </div>
+                        <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
+                            Aulas já transcritas e salvas na base de conhecimento de cada pessoa, mas que ainda
+                            estão em texto cru — sem um resumo detalhado. Peça pro Claude gerar o resumo de uma
+                            delas (ou de todas) direto na conversa.
+                        </p>
+                        {carregandoResumos && resumosPendentes.length === 0 ? (
+                            <p style={{ color: "var(--text-dim)", fontSize: 13 }}>Carregando...</p>
+                        ) : resumosPendentes.length === 0 ? (
+                            <p style={{ color: "var(--text-dim)", fontSize: 13 }}>Nenhum resumo pendente. 🎉</p>
+                        ) : (
+                            <div className="connections-list">
+                                {resumosPendentes.map((item) => (
+                                    <div className="connection-row" key={item.path}>
+                                        <div className="connection-icon" style={{ background: "rgba(124, 58, 237, .18)", color: "#7c3aed" }}>
+                                            <IconFolder />
+                                        </div>
+                                        <div className="connection-info">
+                                            <div className="connection-name">{item.titulo}</div>
+                                            <div className="connection-sub">
+                                                {item.pessoa} — {item.curso}{item.modulo ? ` / ${item.modulo}` : ""}
+                                            </div>
+                                        </div>
+                                        <span className="connection-pill connection-pill-off" title={item.path}>
+                                            cru
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {view === "progresso" && (
                     <>
