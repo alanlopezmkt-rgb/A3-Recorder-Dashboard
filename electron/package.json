@@ -1,13 +1,17 @@
 {
     "name": "a3-os-dashboard-desktop",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "private": true,
     "description": "A3-OS Dashboard - painel do transcritor em app desktop",
     "main": "main.js",
     "scripts": {
         "start": "electron .",
         "build:dashboard": "cd ../dashboard && npm run build && cd ../electron && node copy-static.js",
-        "dist": "npm run build:dashboard && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder"
+        "dist": "npm run build:dashboard && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder",
+        "publish": "npm run build:dashboard && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --publish always"
+    },
+    "dependencies": {
+        "electron-updater": "^6.3.9"
     },
     "devDependencies": {
         "electron": "^33.2.0",
@@ -19,6 +23,11 @@
         "asar": true,
         "directories": {
             "output": "dist"
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "alanlopezmkt-rgb",
+            "repo": "A3-Recorder-Dashboard"
         },
         "files": [
             "main.js",

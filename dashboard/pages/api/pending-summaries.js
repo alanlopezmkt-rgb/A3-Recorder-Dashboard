@@ -52,6 +52,7 @@ export default function handler(req, res) {
     }
 
     const pendentes = [];
+    const incompletas = [];
 
     for (const vault of VAULTS) {
         const cursosDir = path.join(KNOWLEDGE_TOOLS_BASE_DIR, vault.folder, "01_Cursos");
@@ -66,9 +67,9 @@ export default function handler(req, res) {
             }
 
             const fields = parseFrontmatterFields(raw);
-            if (fields.status !== "raw") continue;
+            if (fields.status !== "raw" && fields.status !== "incompleta") continue;
 
-            pendentes.push({
+            const item = {
                 pessoa: vault.pessoa,
                 vault: vault.folder,
                 titulo: fields.title || path.basename(filePath, ".md"),
@@ -77,9 +78,19 @@ export default function handler(req, res) {
                 aula: fields.aula || "",
                 path: filePath,
                 relativePath: path.relative(path.join(KNOWLEDGE_TOOLS_BASE_DIR, vault.folder), filePath),
-            });
+            };
+
+            if (fields.status === "incompleta") {
+                incompletas.push({
+                    ...item,
+                    duracaoRealSegundos: fields.duracao_real_segundos ? Number(fields.duracao_real_segundos) : null,
+                    duracaoEsperadaSegundos: fields.duracao_esperada_segundos ? Number(fields.duracao_esperada_segundos) : null,
+                });
+            } else {
+                pendentes.push(item);
+            }
         }
     }
 
-    res.status(200).json({ pendentes });
+    res.status(200).json({ pendentes, incompletas });
 }

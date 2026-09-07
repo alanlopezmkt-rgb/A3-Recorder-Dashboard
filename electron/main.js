@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, session, ipcMain } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
@@ -252,6 +253,57 @@ function setAutostartState(enabled) {
 ipcMain.handle("a3os:get-autostart", () => getAutostartState());
 ipcMain.handle("a3os:set-autostart", (_event, enabled) => setAutostartState(Boolean(enabled)));
 
+// --- Atualização automática (electron-updater + GitHub Releases) ---------
+
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.logger = { info: (...a) => log("[updater]", ...a), warn: (...a) => log("[updater][warn]", ...a), error: (...a) => log("[updater][erro]", ...a) };
+
+function sendUpdateStatus(status) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("a3os:update-status", status);
+    }
+}
+
+autoUpdater.on("checking-for-update", () => sendUpdateStatus({ state: "checking" }));
+autoUpdater.on("update-available", (info) => sendUpdateStatus({ state: "available", version: info.version }));
+autoUpdater.on("update-not-available", () => sendUpdateStatus({ state: "not-available", version: app.getVersion() }));
+autoUpdater.on("download-progress", (progress) => sendUpdateStatus({ state: "downloading", percent: Math.round(progress.percent) }));
+autoUpdater.on("update-downloaded", (info) => sendUpdateStatus({ state: "downloaded", version: info.version }));
+autoUpdater.on("error", (error) => {
+    log("Erro no autoUpdater:", error);
+    sendUpdateStatus({ state: "error", message: error.message });
+});
+
+ipcMain.handle("a3os:check-for-update", async () => {
+    if (!app.isPackaged) {
+        return { supported: false };
+    }
+    try {
+        await autoUpdater.checkForUpdates();
+        return { supported: true };
+    } catch (error) {
+        sendUpdateStatus({ state: "error", message: error.message });
+        return { supported: true };
+    }
+});
+
+ipcMain.handle("a3os:download-update", async () => {
+    if (!app.isPackaged) return;
+    try {
+        await autoUpdater.downloadUpdate();
+    } catch (error) {
+        sendUpdateStatus({ state: "error", message: error.message });
+    }
+});
+
+ipcMain.handle("a3os:install-update", () => {
+    isQuitting = true;
+    autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle("a3os:get-app-version", () => app.getVersion());
+
 if (singleInstanceLock) {
     app.on("second-instance", () => {
         if (mainWindow) {
@@ -278,6 +330,15 @@ if (singleInstanceLock) {
 
         createWindow();
         createTray();
+
+        if (app.isPackaged) {
+            // Checagem automática e silenciosa ao abrir — não baixa nada
+            // sozinho, só avisa na Central de Notificações/Configurações
+            // se houver versão nova (baixar/instalar continua manual).
+            setTimeout(() => {
+                autoUpdater.checkForUpdates().catch((error) => log("Checagem automática de atualização falhou:", error));
+            }, 10000);
+        }
     });
 
     app.on("window-all-closed", () => {

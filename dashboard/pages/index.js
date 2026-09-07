@@ -367,11 +367,14 @@ function Dashboard() {
     // window.a3os só existe dentro do app desktop (preload.js do Electron) —
     // no navegador comum essas opções nem aparecem.
     const [autostart, setAutostart] = useState({ supported: false, enabled: false });
+    const [appVersion, setAppVersion] = useState("");
+    const [updateStatus, setUpdateStatus] = useState({ state: "idle" });
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [statusFilter, setStatusFilter] = useState("all");
     const [view, setView] = useState("files");
     const [usuarios, setUsuarios] = useState([]);
     const [resumosPendentes, setResumosPendentes] = useState([]);
+    const [resumosIncompletos, setResumosIncompletos] = useState([]);
     const [carregandoResumos, setCarregandoResumos] = useState(false);
     const [progressoPorPessoa, setProgressoPorPessoa] = useState({});
     const [progresso, setProgresso] = useState({
@@ -617,6 +620,7 @@ function Dashboard() {
             const resp = await fetch("/api/pending-summaries");
             const data = await resp.json();
             setResumosPendentes(data.pendentes || []);
+            setResumosIncompletos(data.incompletas || []);
         } catch {
             // Se a rota falhar (ex: pasta das vaults não acessível), só deixa a lista vazia.
         } finally {
@@ -715,6 +719,9 @@ function Dashboard() {
     useEffect(() => {
         if (typeof window !== "undefined" && window.a3os) {
             window.a3os.getAutostart().then(setAutostart);
+            window.a3os.getAppVersion().then(setAppVersion);
+            const unsubscribe = window.a3os.onUpdateStatus(setUpdateStatus);
+            return unsubscribe;
         }
     }, []);
 
@@ -722,6 +729,22 @@ function Dashboard() {
         if (!window.a3os) return;
         const novoEstado = await window.a3os.setAutostart(!autostart.enabled);
         setAutostart(novoEstado);
+    }
+
+    async function verificarAtualizacao() {
+        if (!window.a3os) return;
+        setUpdateStatus({ state: "checking" });
+        await window.a3os.checkForUpdate();
+    }
+
+    async function baixarAtualizacao() {
+        if (!window.a3os) return;
+        await window.a3os.downloadUpdate();
+    }
+
+    async function instalarAtualizacao() {
+        if (!window.a3os) return;
+        await window.a3os.installUpdate();
     }
 
     useEffect(() => {
@@ -1374,8 +1397,13 @@ function Dashboard() {
                     >
                         <IconFolder />
                         {!sidebarCollapsed && <span>Resumos pendentes</span>}
-                        {resumosPendentes.length > 0 && (
-                            <span className="sidebar-badge">{resumosPendentes.length}</span>
+                        {(resumosPendentes.length + resumosIncompletos.length) > 0 && (
+                            <span
+                                className="sidebar-badge"
+                                style={resumosIncompletos.length > 0 ? { background: "#dc2626" } : undefined}
+                            >
+                                {resumosPendentes.length + resumosIncompletos.length}
+                            </span>
                         )}
                     </button>
 
@@ -1525,6 +1553,40 @@ function Dashboard() {
                 </div>
 
                 {view === "assistente" && <Assistente />}
+
+                {view === "resumos" && resumosIncompletos.length > 0 && (
+                    <div className="card" style={{ borderColor: "rgba(220, 38, 38, .4)" }}>
+                        <div className="section-title" style={{ color: "#dc2626" }}>
+                            ⚠ {resumosIncompletos.length} gravaç{resumosIncompletos.length === 1 ? "ão" : "ões"} possivelmente cortada{resumosIncompletos.length === 1 ? "" : "s"}
+                        </div>
+                        <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
+                            A duração real do áudio ficou bem abaixo do esperado para essa aula — provavelmente a
+                            gravação foi interrompida (aba fechada, app minimizado, etc). Confira e peça pra
+                            regravar antes de gerar o resumo.
+                        </p>
+                        <div className="connections-list">
+                            {resumosIncompletos.map((item) => (
+                                <div className="connection-row" key={item.path}>
+                                    <div className="connection-icon" style={{ background: "rgba(220, 38, 38, .18)", color: "#dc2626" }}>
+                                        <IconFolder />
+                                    </div>
+                                    <div className="connection-info">
+                                        <div className="connection-name">{item.titulo}</div>
+                                        <div className="connection-sub">
+                                            {item.pessoa} — {item.curso}{item.modulo ? ` / ${item.modulo}` : ""}
+                                            {item.duracaoRealSegundos && item.duracaoEsperadaSegundos && (
+                                                <> — {Math.round(item.duracaoRealSegundos / 60)} min gravados de ~{Math.round(item.duracaoEsperadaSegundos / 60)} min esperados</>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <span className="connection-pill" style={{ background: "rgba(220, 38, 38, .18)", color: "#dc2626" }} title={item.path}>
+                                        incompleta
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {view === "resumos" && (
                     <div className="card">
@@ -1882,6 +1944,69 @@ function Dashboard() {
                                     >
                                         <div className="switch-dot" />
                                     </div>
+                                </div>
+                            </>
+                        )}
+
+                        {autostart.supported && (
+                            <>
+                                <div className="section-title" style={{ marginTop: 24 }}>Atualizações</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+                                    <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                                        Versão instalada: {appVersion || "—"}
+                                    </span>
+
+                                    {updateStatus.state === "idle" && (
+                                        <button className="btn-small" onClick={verificarAtualizacao}>
+                                            Verificar atualizações
+                                        </button>
+                                    )}
+
+                                    {updateStatus.state === "checking" && (
+                                        <span style={{ fontSize: 13, color: "var(--text-dim)" }}>Verificando...</span>
+                                    )}
+
+                                    {updateStatus.state === "not-available" && (
+                                        <>
+                                            <span style={{ fontSize: 13, color: "var(--text-dim)" }}>Você já está na versão mais recente. 🎉</span>
+                                            <button className="btn-small" onClick={verificarAtualizacao}>Verificar de novo</button>
+                                        </>
+                                    )}
+
+                                    {updateStatus.state === "available" && (
+                                        <>
+                                            <span style={{ fontSize: 13, color: "#7c3aed" }}>
+                                                Nova versão disponível: {updateStatus.version}
+                                            </span>
+                                            <button className="btn-small" onClick={baixarAtualizacao}>Baixar atualização</button>
+                                        </>
+                                    )}
+
+                                    {updateStatus.state === "downloading" && (
+                                        <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                                            Baixando... {updateStatus.percent || 0}%
+                                        </span>
+                                    )}
+
+                                    {updateStatus.state === "downloaded" && (
+                                        <>
+                                            <span style={{ fontSize: 13, color: "#16a34a" }}>
+                                                Atualização {updateStatus.version} baixada — pronta pra instalar.
+                                            </span>
+                                            <button className="btn-small" onClick={instalarAtualizacao}>
+                                                Reiniciar e instalar agora
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {updateStatus.state === "error" && (
+                                        <>
+                                            <span style={{ fontSize: 13, color: "#dc2626" }}>
+                                                Erro ao verificar atualização: {updateStatus.message}
+                                            </span>
+                                            <button className="btn-small" onClick={verificarAtualizacao}>Tentar de novo</button>
+                                        </>
+                                    )}
                                 </div>
                             </>
                         )}
