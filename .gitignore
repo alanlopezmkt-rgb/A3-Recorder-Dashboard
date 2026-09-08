@@ -3,3 +3,4 @@ node_modules/
 dashboard/.next/
 electron/dist/
 electron/node_modules/
+dashboard/dashboard_start.log
