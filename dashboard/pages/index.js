@@ -217,17 +217,17 @@ function IconAudio() {
     );
 }
 
-function IconFolder() {
+function IconFolder({ className }) {
     return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
             <path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h4.3c.5 0 1 .2 1.3.6l1 1.1h6.8c.9 0 1.6.7 1.6 1.6v9.3c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6V6.2z" />
         </svg>
     );
 }
 
-function IconAlertTriangle() {
+function IconAlertTriangle({ className }) {
     return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             <line x1="12" y1="9" x2="12" y2="13" />
             <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -1405,7 +1405,7 @@ function Dashboard() {
                         title="Resumos pendentes"
                         onClick={() => setView("resumos")}
                     >
-                        {resumosIncompletos.length > 0 ? <IconAlertTriangle /> : <IconFolder />}
+                        {resumosIncompletos.length > 0 ? <IconAlertTriangle className="sidebar-icon" /> : <IconFolder className="sidebar-icon" />}
                         {!sidebarCollapsed && <span>Resumos pendentes</span>}
                         {(resumosPendentes.length + resumosIncompletos.length) > 0 && (
                             <span
