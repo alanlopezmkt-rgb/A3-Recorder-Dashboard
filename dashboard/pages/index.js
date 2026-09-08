@@ -1405,7 +1405,7 @@ function Dashboard() {
                         title="Resumos pendentes"
                         onClick={() => setView("resumos")}
                     >
-                        <IconFolder />
+                        {resumosIncompletos.length > 0 ? <IconAlertTriangle /> : <IconFolder />}
                         {!sidebarCollapsed && <span>Resumos pendentes</span>}
                         {(resumosPendentes.length + resumosIncompletos.length) > 0 && (
                             <span
@@ -1565,7 +1565,7 @@ function Dashboard() {
                 {view === "assistente" && <Assistente />}
 
                 {view === "resumos" && resumosIncompletos.length > 0 && (
-                    <div className="card" style={{ borderColor: "rgba(220, 38, 38, .4)" }}>
+                    <div className="card" style={{ borderColor: "rgba(220, 38, 38, .4)", marginBottom: 20 }}>
                         <div className="section-title" style={{ color: "#dc2626" }}>
                             ⚠ {resumosIncompletos.length} gravaç{resumosIncompletos.length === 1 ? "ão" : "ões"} possivelmente cortada{resumosIncompletos.length === 1 ? "" : "s"}
                         </div>
