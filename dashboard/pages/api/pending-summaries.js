@@ -67,7 +67,7 @@ export default function handler(req, res) {
             }
 
             const fields = parseFrontmatterFields(raw);
-            if (fields.status !== "raw" && fields.status !== "incompleta") continue;
+            if (fields.status !== "raw" && fields.status !== "incompleta" && fields.status !== "longa") continue;
 
             const item = {
                 pessoa: vault.pessoa,
@@ -80,9 +80,10 @@ export default function handler(req, res) {
                 relativePath: path.relative(path.join(KNOWLEDGE_TOOLS_BASE_DIR, vault.folder), filePath),
             };
 
-            if (fields.status === "incompleta") {
+            if (fields.status === "incompleta" || fields.status === "longa") {
                 incompletas.push({
                     ...item,
+                    tipo: fields.status === "longa" ? "longa" : "curta",
                     duracaoRealSegundos: fields.duracao_real_segundos ? Number(fields.duracao_real_segundos) : null,
                     duracaoEsperadaSegundos: fields.duracao_esperada_segundos ? Number(fields.duracao_esperada_segundos) : null,
                 });

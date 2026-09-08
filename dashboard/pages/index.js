@@ -1564,10 +1564,10 @@ function Dashboard() {
 
                 {view === "assistente" && <Assistente />}
 
-                {view === "resumos" && resumosIncompletos.length > 0 && (
+                {view === "resumos" && resumosIncompletos.filter((item) => item.tipo !== "longa").length > 0 && (
                     <div className="card" style={{ borderColor: "rgba(220, 38, 38, .4)", marginBottom: 20 }}>
                         <div className="section-title" style={{ color: "#dc2626" }}>
-                            ⚠ {resumosIncompletos.length} gravaç{resumosIncompletos.length === 1 ? "ão" : "ões"} possivelmente cortada{resumosIncompletos.length === 1 ? "" : "s"}
+                            {(() => { const n = resumosIncompletos.filter((item) => item.tipo !== "longa").length; return <>⚠ {n} gravaç{n === 1 ? "ão" : "ões"} possivelmente cortada{n === 1 ? "" : "s"}</>; })()}
                         </div>
                         <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
                             A duração real do áudio ficou bem abaixo do esperado para essa aula — provavelmente a
@@ -1575,7 +1575,7 @@ function Dashboard() {
                             regravar antes de gerar o resumo.
                         </p>
                         <div className="connections-list">
-                            {resumosIncompletos.map((item) => (
+                            {resumosIncompletos.filter((item) => item.tipo !== "longa").map((item) => (
                                 <div className="connection-row" key={item.path}>
                                     <div className="connection-icon" style={{ background: "rgba(220, 38, 38, .18)", color: "#dc2626" }}>
                                         <IconAlertTriangle />
@@ -1591,6 +1591,41 @@ function Dashboard() {
                                     </div>
                                     <span className="connection-pill" style={{ background: "rgba(220, 38, 38, .18)", color: "#dc2626" }} title={item.path}>
                                         incompleta
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {view === "resumos" && resumosIncompletos.filter((item) => item.tipo === "longa").length > 0 && (
+                    <div className="card" style={{ borderColor: "rgba(217, 119, 6, .4)", marginBottom: 20 }}>
+                        <div className="section-title" style={{ color: "#d97706" }}>
+                            {(() => { const n = resumosIncompletos.filter((item) => item.tipo === "longa").length; return <>⚠ {n} gravaç{n === 1 ? "ão" : "ões"} possivelmente pausada{n === 1 ? "" : "s"} no meio</>; })()}
+                        </div>
+                        <p style={{ color: "var(--text-dim)", fontSize: 13, lineHeight: 1.6, maxWidth: 640 }}>
+                            A duração real do áudio ficou bem acima do esperado para essa aula — provavelmente o
+                            vídeo foi pausado no meio da gravação (a extensão grava o áudio da aba o tempo todo,
+                            então vira um trecho de silêncio dentro do arquivo). O áudio deve estar completo,
+                            mas confira antes de gerar o resumo.
+                        </p>
+                        <div className="connections-list">
+                            {resumosIncompletos.filter((item) => item.tipo === "longa").map((item) => (
+                                <div className="connection-row" key={item.path}>
+                                    <div className="connection-icon" style={{ background: "rgba(217, 119, 6, .18)", color: "#d97706" }}>
+                                        <IconAlertTriangle />
+                                    </div>
+                                    <div className="connection-info">
+                                        <div className="connection-name">{item.titulo}</div>
+                                        <div className="connection-sub">
+                                            {item.pessoa} — {item.curso}{item.modulo ? ` / ${item.modulo}` : ""}
+                                            {item.duracaoRealSegundos && item.duracaoEsperadaSegundos && (
+                                                <> — {Math.round(item.duracaoRealSegundos / 60)} min gravados, ~{Math.round(item.duracaoEsperadaSegundos / 60)} min esperados</>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <span className="connection-pill" style={{ background: "rgba(217, 119, 6, .18)", color: "#d97706" }} title={item.path}>
+                                        pausada
                                     </span>
                                 </div>
                             ))}
