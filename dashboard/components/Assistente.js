@@ -114,6 +114,12 @@ export default function Assistente() {
 
         function desenhar() {
             const estadoAtual = estadoRef.current;
+            const claro =
+                typeof document !== "undefined" &&
+                document.documentElement.getAttribute("data-theme") === "light";
+            const corParticula = claro ? "63, 63, 70" : "212, 212, 216";
+            const corNucleo1 = claro ? "39, 39, 42" : "228, 228, 231";
+            const corNucleo2 = claro ? "82, 82, 91" : "161, 161, 170";
             const intensidade =
                 estadoAtual === "falando" ? 1 : estadoAtual === "ouvindo" ? 0.78 : estadoAtual === "pensando" ? 0.55 : 0.32;
             const velocidade =
@@ -127,9 +133,9 @@ export default function Assistente() {
             // brilho central
             const nucleoRaio = 30 + intensidade * 14 + Math.sin(t * 2) * 2 * intensidade;
             const nucleo = ctx.createRadialGradient(cx, cy, 0, cx, cy, nucleoRaio);
-            nucleo.addColorStop(0, `rgba(228, 228, 231, ${0.55 * intensidade + 0.12})`);
-            nucleo.addColorStop(0.5, `rgba(161, 161, 170, ${0.28 * intensidade + 0.05})`);
-            nucleo.addColorStop(1, "rgba(161, 161, 170, 0)");
+            nucleo.addColorStop(0, `rgba(${corNucleo1}, ${0.55 * intensidade + 0.12})`);
+            nucleo.addColorStop(0.5, `rgba(${corNucleo2}, ${0.28 * intensidade + 0.05})`);
+            nucleo.addColorStop(1, `rgba(${corNucleo2}, 0)`);
             ctx.fillStyle = nucleo;
             ctx.fillRect(0, 0, size, size);
 
@@ -156,7 +162,7 @@ export default function Assistente() {
             pontos.forEach((p) => {
                 ctx.beginPath();
                 ctx.arc(p.sx, p.sy, Math.max(0.4, p.size), 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(212, 212, 216, ${Math.min(1, p.opacidade)})`;
+                ctx.fillStyle = `rgba(${corParticula}, ${Math.min(1, p.opacidade)})`;
                 ctx.fill();
             });
 
