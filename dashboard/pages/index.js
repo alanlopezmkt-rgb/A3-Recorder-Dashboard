@@ -207,6 +207,23 @@ function IconRefresh() {
     );
 }
 
+function IconSun() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 3v2.3M12 18.7V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.3M18.7 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" />
+        </svg>
+    );
+}
+
+function IconMoon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" />
+        </svg>
+    );
+}
+
 function IconAudio() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="17" height="17">
@@ -1579,9 +1596,14 @@ function Dashboard() {
                         <button className="icon-btn" title="Atualizar" onClick={carregar}>
                             <IconRefresh />
                         </button>
-                        <div className="avatar" title={ADMIN_EMAIL}>
-                            {ADMIN_EMAIL.charAt(0).toUpperCase()}
-                        </div>
+                        <button
+                            className="icon-btn theme-toggle-btn"
+                            title="Alternar tema"
+                            aria-label="Alternar tema claro/escuro"
+                            onClick={() => alternarTema(theme === "dark" ? "light" : "dark")}
+                        >
+                            {theme === "dark" ? <IconSun /> : <IconMoon />}
+                        </button>
                     </div>
                 </div>
 
@@ -2017,24 +2039,6 @@ function Dashboard() {
                                     </div>
                                 </div>
                             ))}
-                        </div>
-
-                        <div className="section-title" style={{ marginTop: 24 }}>Tema</div>
-                        <div className="theme-options">
-                            <div
-                                className="theme-option"
-                                data-active={theme === "dark"}
-                                onClick={() => alternarTema("dark")}
-                            >
-                                Escuro
-                            </div>
-                            <div
-                                className="theme-option"
-                                data-active={theme === "light"}
-                                onClick={() => alternarTema("light")}
-                            >
-                                Claro
-                            </div>
                         </div>
 
                         {autostart.supported && (
