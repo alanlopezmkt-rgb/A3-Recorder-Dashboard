@@ -127,15 +127,16 @@ function waitForServer(retries = 60) {
 }
 
 function configurarPermissoesNotificacao() {
-    // Sem um handler explicito, o Electron nega silenciosamente o pedido de
-    // permissao de notificacao feito pelo Notification.requestPermission()
-    // da pagina, entao os avisos de "Transcricao concluida" etc nunca
-    // aparecem — mesmo a pagina achando que tem permissao concedida.
+    // Sem um handler explicito, o Electron nega silenciosamente qualquer
+    // pedido de permissao da pagina (notificacao, microfone, etc), entao
+    // os avisos de "Transcricao concluida" e o assistente de voz nunca
+    // funcionam — mesmo a pagina achando que tem permissao concedida.
+    const permissoesLiberadas = ["notifications", "media", "microphone"];
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-        callback(permission === "notifications");
+        callback(permissoesLiberadas.includes(permission));
     });
     session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-        return permission === "notifications";
+        return permissoesLiberadas.includes(permission);
     });
 }
 

@@ -1,6 +1,6 @@
 {
     "name": "a3-os-dashboard-desktop",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "private": true,
     "description": "A3-OS Dashboard - painel do transcritor em app desktop",
     "main": "main.js",
