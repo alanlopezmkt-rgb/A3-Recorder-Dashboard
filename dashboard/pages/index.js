@@ -131,9 +131,9 @@ const STATUS_LABEL = {
 const WORKER_OFFLINE_AFTER_SECONDS = 40;
 const USER_OFFLINE_AFTER_SECONDS = 90;
 
-function IconGrid() {
+function IconGrid({ className }) {
     return (
-        <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg className={`sidebar-icon ${className || ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="7.5" height="7.5" rx="1.6" />
             <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6" />
             <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6" />
@@ -403,6 +403,9 @@ function Dashboard() {
     const [deletePasswordInput, setDeletePasswordInput] = useState("");
     const [apagarDaVault, setApagarDaVault] = useState(true);
     const [vaultDeleteWarning, setVaultDeleteWarning] = useState("");
+    const [audioFilter, setAudioFilter] = useState("hoje");
+    const [customStart, setCustomStart] = useState("");
+    const [customEnd, setCustomEnd] = useState("");
     const [selectedJobIds, setSelectedJobIds] = useState([]);
     const [transcrevendoLote, setTranscrevendoLote] = useState(false);
     const [deleteError, setDeleteError] = useState("");
@@ -821,6 +824,10 @@ function Dashboard() {
         return nomeFormatado + extensao;
     }
 
+    function tituloSemExtensao(filename) {
+        return nomeExibicao(filename).replace(/\.[a-zA-Z0-9]+$/, "");
+    }
+
     function formatarBytes(bytes) {
         if (bytes === null || bytes === undefined) return "—";
         if (bytes === 0) return "0 B";
@@ -1237,7 +1244,30 @@ function Dashboard() {
         }
     }
 
+    function dateKey(offsetDays) {
+        const d = new Date(now);
+        d.setDate(d.getDate() + offsetDays);
+        return d.toISOString().slice(0, 10);
+    }
+
+    const hojeKey = dateKey(0);
+    const ontemKey = dateKey(-1);
+
+    let audiosFiltradosInicio = hojeKey;
+    let audiosFiltradosFim = hojeKey;
+    if (audioFilter === "ontem") {
+        audiosFiltradosInicio = ontemKey;
+        audiosFiltradosFim = ontemKey;
+    } else if (audioFilter === "personalizado") {
+        audiosFiltradosInicio = customStart || hojeKey;
+        audiosFiltradosFim = customEnd || hojeKey;
+    }
+
     const rowsFiltradas = rows.filter((row) => {
+        if (!row.created_at) return false;
+        const dataKey = row.created_at.slice(0, 10);
+        if (dataKey < audiosFiltradosInicio || dataKey > audiosFiltradosFim) return false;
+
         if (statusFilter === "completed" && row.status !== "completed") return false;
         if (statusFilter === "pending" && row.status === "completed") return false;
 
@@ -1285,14 +1315,34 @@ function Dashboard() {
         }, {})
     ).sort((a, b) => b.total - a.total);
 
-    const chartData = Array.from({ length: 7 }).map((_, i) => {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (6 - i));
-        const key = d.toISOString().slice(0, 10);
-        const count = rows.filter((r) => r.created_at && r.created_at.slice(0, 10) === key).length;
-        return { key, count, label: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "") };
+    const audiosFiltrados = rows.filter((r) => {
+        if (!r.created_at) return false;
+        const key = r.created_at.slice(0, 10);
+        return key >= audiosFiltradosInicio && key <= audiosFiltradosFim;
     });
-    const chartMax = Math.max(1, ...chartData.map((d) => d.count));
+    const audiosFiltradosCount = audiosFiltrados.length;
+
+    const MAX_DIAS_GRAFICO = 31;
+    const diasNoPeriodo = Math.min(
+        MAX_DIAS_GRAFICO,
+        Math.max(
+            1,
+            Math.round(
+                (new Date(audiosFiltradosFim) - new Date(audiosFiltradosInicio)) / (1000 * 60 * 60 * 24)
+            ) + 1
+        )
+    );
+    const audiosChartData = Array.from({ length: diasNoPeriodo }).map((_, i) => {
+              const d = new Date(audiosFiltradosInicio + "T00:00:00");
+              d.setDate(d.getDate() + i);
+              const key = d.toISOString().slice(0, 10);
+              const count = rows.filter((r) => r.created_at && r.created_at.slice(0, 10) === key).length;
+              const label = diasNoPeriodo <= 9
+                  ? d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
+                  : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+              return { key, count, label };
+          });
+    const audiosChartMax = Math.max(1, ...audiosChartData.map((d) => d.count));
 
     const usuariosCount = usuarios.length;
     const usuariosOnline = usuarios.filter((u) => userIsOnline(u)).length;
@@ -1348,9 +1398,9 @@ function Dashboard() {
                         title="Dashboard"
                         onClick={() => { setView("files"); setStatusFilter("all"); }}
                     >
-                        <IconGrid />
+                        <IconGrid className={sidebarCollapsed && pendentesCount > 0 ? "sidebar-icon-alert" : ""} />
                         {!sidebarCollapsed && <span>Dashboard</span>}
-                        {pendentesCount > 0 && (
+                        {!sidebarCollapsed && pendentesCount > 0 && (
                             <span className="sidebar-badge">{pendentesCount}</span>
                         )}
                     </button>
@@ -1405,9 +1455,19 @@ function Dashboard() {
                         title="Resumos pendentes"
                         onClick={() => setView("resumos")}
                     >
-                        {resumosIncompletos.length > 0 ? <IconAlertTriangle className="sidebar-icon" /> : <IconFolder className="sidebar-icon" />}
+                        {resumosIncompletos.length > 0 ? (
+                            <IconAlertTriangle
+                                className={`sidebar-icon ${sidebarCollapsed ? "sidebar-icon-alert-critical" : ""}`}
+                            />
+                        ) : (
+                            <IconFolder
+                                className={`sidebar-icon ${
+                                    sidebarCollapsed && resumosPendentes.length > 0 ? "sidebar-icon-alert" : ""
+                                }`}
+                            />
+                        )}
                         {!sidebarCollapsed && <span>Resumos pendentes</span>}
-                        {(resumosPendentes.length + resumosIncompletos.length) > 0 && (
+                        {!sidebarCollapsed && (resumosPendentes.length + resumosIncompletos.length) > 0 && (
                             <span
                                 className="sidebar-badge"
                                 style={resumosIncompletos.length > 0 ? { background: "#dc2626" } : undefined}
@@ -1654,7 +1714,7 @@ function Dashboard() {
                             <div className="connections-list">
                                 {resumosPendentes.map((item) => (
                                     <div className="connection-row" key={item.path}>
-                                        <div className="connection-icon" style={{ background: "rgba(124, 58, 237, .18)", color: "#7c3aed" }}>
+                                        <div className="connection-icon" style={{ background: "rgba(24, 24, 27, .3)", color: "#71717a" }}>
                                             <IconFolder />
                                         </div>
                                         <div className="connection-info">
@@ -2020,7 +2080,7 @@ function Dashboard() {
 
                                     {updateStatus.state === "available" && (
                                         <>
-                                            <span style={{ fontSize: 13, color: "#7c3aed" }}>
+                                            <span style={{ fontSize: 13, color: "#71717a" }}>
                                                 Nova versão disponível: {updateStatus.version}
                                             </span>
                                             <button className="btn-small" onClick={baixarAtualizacao}>Baixar atualização</button>
@@ -2103,7 +2163,7 @@ function Dashboard() {
                                 const online = userIsOnline(usuario);
                                 return (
                                     <div className="connection-row" key={usuario.id}>
-                                        <div className="connection-icon" style={{ background: "rgba(124, 58, 237, .18)", color: "#7c3aed" }}>
+                                        <div className="connection-icon" style={{ background: "rgba(24, 24, 27, .3)", color: "#71717a" }}>
                                             <IconUsers />
                                         </div>
                                         <div className="connection-info">
@@ -2151,7 +2211,7 @@ function Dashboard() {
 
                 {view === "files" && (
                 <>
-                <div className="card">
+                <div className="card" style={{ marginBottom: 20 }}>
                     <div className="section-title">Progresso do curso</div>
                     <div className="progress-summary-row">
                         <div className="progress-summary-item">
@@ -2191,21 +2251,79 @@ function Dashboard() {
                 </div>
 
                 <div className="card chart-card">
-                    <div className="section-title">Áudios enviados (últimos 7 dias)</div>
-                    <div className="chart-bars">
-                        {chartData.map((d) => (
-                            <div className="chart-bar-col" key={d.key}>
-                                <div className="chart-bar-value">{d.count > 0 ? d.count : ""}</div>
-                                <div className="chart-bar-track">
-                                    <div
-                                        className="chart-bar-fill"
-                                        style={{ height: `${chartMax > 0 ? (d.count / chartMax) * 100 : 0}%` }}
-                                    />
-                                </div>
-                                <div className="chart-bar-label">{d.label}</div>
-                            </div>
-                        ))}
+                    <div className="audio-filter-top">
+                        <div className="section-title" style={{ marginBottom: 0 }}>Áudios enviados</div>
+                        <div className="theme-options audio-filter-options">
+                            <button
+                                type="button"
+                                className="theme-option"
+                                data-active={audioFilter === "hoje"}
+                                onClick={() => setAudioFilter("hoje")}
+                            >
+                                Hoje
+                            </button>
+                            <button
+                                type="button"
+                                className="theme-option"
+                                data-active={audioFilter === "ontem"}
+                                onClick={() => setAudioFilter("ontem")}
+                            >
+                                Ontem
+                            </button>
+                            <button
+                                type="button"
+                                className="theme-option"
+                                data-active={audioFilter === "personalizado"}
+                                onClick={() => setAudioFilter("personalizado")}
+                            >
+                                Personalizado
+                            </button>
+                        </div>
                     </div>
+
+                    {audioFilter === "personalizado" && (
+                        <div className="audio-filter-dates">
+                            <input
+                                type="date"
+                                value={customStart}
+                                max={customEnd || undefined}
+                                onChange={(e) => setCustomStart(e.target.value)}
+                            />
+                            <span className="audio-filter-dates-sep">até</span>
+                            <input
+                                type="date"
+                                value={customEnd}
+                                min={customStart || undefined}
+                                onChange={(e) => setCustomEnd(e.target.value)}
+                            />
+                        </div>
+                    )}
+
+                    <div className="audio-filter-result">
+                        <span className="audio-filter-result-value">{audiosFiltradosCount}</span>
+                        <span className="audio-filter-result-label">
+                            {audioFilter === "hoje" && "áudio(s) enviado(s) hoje"}
+                            {audioFilter === "ontem" && "áudio(s) enviado(s) ontem"}
+                            {audioFilter === "personalizado" && "áudio(s) enviado(s) no período selecionado"}
+                        </span>
+                    </div>
+
+                    {audiosFiltradosCount > 0 && (
+                        <div className="chart-bars">
+                            {audiosChartData.map((d) => (
+                                <div className="chart-bar-col" key={d.key}>
+                                    <div className="chart-bar-value">{d.count > 0 ? d.count : ""}</div>
+                                    <div className="chart-bar-track">
+                                        <div
+                                            className="chart-bar-fill"
+                                            style={{ height: `${audiosChartMax > 0 ? (d.count / audiosChartMax) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                    <div className="chart-bar-label">{d.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
             <div className="card list-view">
@@ -2262,12 +2380,11 @@ function Dashboard() {
                                             }
                                         }}
                                     >
-                                        {nomeExibicao(row.filename)}
+                                        {tituloSemExtensao(row.filename)}
                                     </span>
                                     <div className="list-row-path">
                                         {row.courses?.name || "—"}
-                                        {row.modules ? ` / Módulo ${row.modules.module_number}` : ""}
-                                        {row.lessons ? ` / ${row.lessons.lesson_number} — ${row.lessons.title}` : ""}
+                                        {row.modules ? ` · Módulo ${row.modules.module_number}` : ""}
                                     </div>
                                     {playingAudio && playingAudio.id === row.id && (
                                         <div className="audio-player-wrap">
