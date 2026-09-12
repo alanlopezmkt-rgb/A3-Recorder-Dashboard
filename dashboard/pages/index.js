@@ -278,9 +278,9 @@ function IconCheckCircle() {
     );
 }
 
-function IconClock() {
+function IconClock({ className }) {
     return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
             <circle cx="12" cy="12" r="9.5" />
             <path d="M12 7v5l3.2 2" />
         </svg>
@@ -692,6 +692,8 @@ function Dashboard() {
 
     useEffect(() => {
         carregarResumosPendentes();
+        const timer = setInterval(carregarResumosPendentes, 1000);
+        return () => clearInterval(timer);
     }, []);
 
     useEffect(() => {
@@ -1561,7 +1563,7 @@ function Dashboard() {
                                 className={`sidebar-icon ${sidebarCollapsed ? "sidebar-icon-alert-critical" : ""}`}
                             />
                         ) : (
-                            <IconFolder
+                            <IconClock
                                 className={`sidebar-icon ${
                                     sidebarCollapsed && resumosPendentes.length > 0 ? "sidebar-icon-alert" : ""
                                 }`}
@@ -2704,12 +2706,10 @@ function Dashboard() {
                                 </div>
                             )}
                             {detailsTarget.transcription_jobs?.[0]?.status === "completed" && (
-                                <div className="details-row">
+                                <div className="details-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
                                     <span className="details-label">Arquivo .md salvo em</span>
-                                    <span className="details-value" style={{ wordBreak: "break-all", textAlign: "right" }}>
-                                        {(() => {
-                                            return "Salvo automaticamente na base de conhecimento pessoal (e na central, se aplicável)";
-                                        })()}
+                                    <span className="details-value" style={{ textAlign: "left", fontSize: 12, fontWeight: 400, color: "var(--text-dim)" }}>
+                                        Salvo no vault pessoal (e no central, se aplicável)
                                     </span>
                                 </div>
                             )}
