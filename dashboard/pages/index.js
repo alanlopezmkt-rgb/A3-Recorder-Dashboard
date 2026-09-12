@@ -663,6 +663,19 @@ function Dashboard() {
         }
     }, [rows, detailsTarget]);
 
+    async function marcarAvisoDuracaoLido(item) {
+        try {
+            await fetch("/api/mark-duration-warning-read", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filePath: item.path }),
+            });
+        } catch {
+            // Se der erro de rede, o refetch abaixo simplesmente mantém o item na lista.
+        }
+        carregarResumosPendentes();
+    }
+
     async function carregarResumosPendentes() {
         setCarregandoResumos(true);
         try {
@@ -1745,6 +1758,13 @@ function Dashboard() {
                                     <span className="connection-pill" style={{ background: "rgba(220, 38, 38, .18)", color: "#dc2626" }} title={item.path}>
                                         incompleta
                                     </span>
+                                    <button
+                                        className="icon-btn"
+                                        title="Marcar como lido (some da lista)"
+                                        onClick={() => marcarAvisoDuracaoLido(item)}
+                                    >
+                                        <IconCheckCircle />
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -1780,6 +1800,13 @@ function Dashboard() {
                                     <span className="connection-pill" style={{ background: "rgba(217, 119, 6, .18)", color: "#d97706" }} title={item.path}>
                                         pausada
                                     </span>
+                                    <button
+                                        className="icon-btn"
+                                        title="Marcar como lido (some da lista)"
+                                        onClick={() => marcarAvisoDuracaoLido(item)}
+                                    >
+                                        <IconCheckCircle />
+                                    </button>
                                 </div>
                             ))}
                         </div>
