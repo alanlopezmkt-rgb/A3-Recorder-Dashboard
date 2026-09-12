@@ -1261,14 +1261,25 @@ function Dashboard() {
         }
     }
 
-    function dateKey(offsetDays) {
-        const d = new Date(now);
-        d.setDate(d.getDate() + offsetDays);
-        return d.toISOString().slice(0, 10);
+    // Chave de data no fuso LOCAL do navegador (não UTC) — created_at vem
+    // do Postgres em UTC, e usar toISOString()/slice() direto classificava
+    // envios feitos depois das 21h (horário de Brasília, UTC-3) no dia
+    // seguinte, fazendo áudios de hoje aparecerem no filtro "Ontem".
+    function dateKey(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
     }
 
-    const hojeKey = dateKey(0);
-    const ontemKey = dateKey(-1);
+    function dateKeyOffset(offsetDays) {
+        const d = new Date(now);
+        d.setDate(d.getDate() + offsetDays);
+        return dateKey(d);
+    }
+
+    const hojeKey = dateKeyOffset(0);
+    const ontemKey = dateKeyOffset(-1);
 
     let audiosFiltradosInicio = hojeKey;
     let audiosFiltradosFim = hojeKey;
@@ -1282,7 +1293,7 @@ function Dashboard() {
 
     const rowsFiltradas = rows.filter((row) => {
         if (!row.created_at) return false;
-        const dataKey = row.created_at.slice(0, 10);
+        const dataKey = dateKey(new Date(row.created_at));
         if (dataKey < audiosFiltradosInicio || dataKey > audiosFiltradosFim) return false;
 
         if (statusFilter === "completed" && row.status !== "completed") return false;
@@ -1334,7 +1345,7 @@ function Dashboard() {
 
     const audiosFiltrados = rows.filter((r) => {
         if (!r.created_at) return false;
-        const key = r.created_at.slice(0, 10);
+        const key = dateKey(new Date(r.created_at));
         return key >= audiosFiltradosInicio && key <= audiosFiltradosFim;
     });
     const audiosFiltradosCount = audiosFiltrados.length;
@@ -1352,8 +1363,8 @@ function Dashboard() {
     const audiosChartData = Array.from({ length: diasNoPeriodo }).map((_, i) => {
               const d = new Date(audiosFiltradosInicio + "T00:00:00");
               d.setDate(d.getDate() + i);
-              const key = d.toISOString().slice(0, 10);
-              const count = rows.filter((r) => r.created_at && r.created_at.slice(0, 10) === key).length;
+              const key = dateKey(d);
+              const count = rows.filter((r) => r.created_at && dateKey(new Date(r.created_at)) === key).length;
               const label = diasNoPeriodo <= 9
                   ? d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
                   : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
