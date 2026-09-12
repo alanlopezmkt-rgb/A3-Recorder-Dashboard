@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase, ADMIN_EMAIL, REMEMBER_ME_KEY } from "../lib/supabaseClient";
 import Assistente from "../components/Assistente";
 
+// Mantido fora de qualquer componente (nao e recriado a cada render) — guarda
+// uma referencia forte para cada probe de audio criado por garantirDuracao(),
+// evitando que o navegador colete (GC) o elemento antes dos eventos de
+// metadata/seek dispararem.
+const probesEmAndamento = new Set();
+
 export default function Home() {
     const [session, setSession] = useState(undefined);
 
@@ -644,6 +650,19 @@ function Dashboard() {
         };
     }, []);
 
+    // O modal de detalhes guarda uma copia (snapshot) da row no momento do
+    // clique — sem isso, quando garantirDuracao() grava a duracao no banco
+    // em segundo plano, o modal aberto continua mostrando o valor antigo ("—")
+    // ate ser fechado e reaberto. Aqui sincroniza com a versao mais recente
+    // de `rows` sempre que ela mudar (realtime ou refetch).
+    useEffect(() => {
+        if (!detailsTarget) return;
+        const atualizado = rows.find((r) => r.id === detailsTarget.id);
+        if (atualizado && atualizado !== detailsTarget) {
+            setDetailsTarget(atualizado);
+        }
+    }, [rows, detailsTarget]);
+
     async function carregarResumosPendentes() {
         setCarregandoResumos(true);
         try {
@@ -950,14 +969,55 @@ function Dashboard() {
         if (error || !data) return;
 
         const probe = new Audio();
-        probe.preload = "metadata";
-        probe.src = data.signedUrl;
-        probe.addEventListener("loadedmetadata", () => {
+        // Sem essa referencia guardada em algum lugar fora do escopo da funcao,
+        // o navegador pode coletar (GC) o elemento <audio> solto antes dos
+        // eventos de metadata/seek dispararem — ele nao esta na DOM, e so os
+        // listeners internos (que fecham sobre `probe`) nao bastam pra manter
+        // vivo em todo motor. `probesEmAndamento` mantem uma referencia forte
+        // ate a duracao ser salva (ou dar erro).
+        probesEmAndamento.add(probe);
+        const liberarProbe = () => probesEmAndamento.delete(probe);
+
+        let salvo = false;
+
+        const salvarSeValido = () => {
+            if (salvo) return false;
             const segundos = probe.duration;
             if (Number.isFinite(segundos) && segundos > 0) {
-                supabase.from("audio_files").update({ duration: segundos }).eq("id", row.id);
+                salvo = true;
+                Promise.resolve(
+                    supabase.from("audio_files").update({ duration: segundos }).eq("id", row.id)
+                ).finally(liberarProbe);
+                return true;
             }
-        });
+            return false;
+        };
+
+        probe.addEventListener("error", liberarProbe);
+
+        // Webm gravado ao vivo pelo MediaRecorder costuma vir sem duração real
+        // no header (metadata reporta Infinity ou NaN) até o navegador ser
+        // forçado a varrer o arquivo. Buscar um tempo bem alto força essa
+        // varredura; o Chrome corrige probe.duration e dispara "timeupdate"
+        // (não "durationchange", que às vezes não chega a disparar de novo).
+        const forcarLeituraReal = () => {
+            if (salvarSeValido()) return;
+            const aoAvancarTempo = () => {
+                probe.removeEventListener("timeupdate", aoAvancarTempo);
+                probe.removeEventListener("durationchange", aoAvancarTempo);
+                if (salvarSeValido()) {
+                    probe.currentTime = 0;
+                }
+            };
+            probe.addEventListener("timeupdate", aoAvancarTempo);
+            probe.addEventListener("durationchange", aoAvancarTempo);
+            probe.currentTime = 1e101;
+        };
+
+        probe.addEventListener("loadedmetadata", forcarLeituraReal);
+        probe.preload = "metadata";
+        probe.src = data.signedUrl;
+        probe.load();
     }
 
     async function tocarAudio(row) {
